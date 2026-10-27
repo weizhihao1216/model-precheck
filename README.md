@@ -1,101 +1,317 @@
-# 第三方武器模型 DLL 集成预检工具 (Model Validator)
+# 第三方武器模型 DLL 集成预检工具 (Model Verification)
+
+本工具面向仿真引擎（如 XSIM）集成前的第三方武器模型 C++ 动态库（DLL）预检：对**规范模型包**做静态检查、受控加载、UserMain / 多对象脚本编译运行，以及性能、并发、轨迹与报告输出。
+
+对照表与样例实测见：`dist/模型集成问题.xlsx`（含「模型集成问题」「测试用例索引」「实测矩阵」）。
+
+---
+
+## 0. 模型集成问题对照（来源：集成问题表）
+
+对应历史「模型集成问题」清单。工具侧能力以**能否发现 / 隔离 / 复现 / 报告**为主；厂家缺库、隐含依赖等根因仍需模型侧整改。
+
+### 0.1 已解决（工具可检测或已提供对策）
+
+#### 静态 · 构建 / 链接配置
+- **现象**：编译 Debug 报错、Release 成功  
+- **场景 / 原因**：厂家常忽略或不提供 Debug 链接库  
+- **工具操作**：添加型号 → 选模型包 → **一键预检**；顶部徽章「Release/Debug」、弹窗与各导航页「可能导致」会标明无法编 Debug  
+- **功能实现**：扫描包内 Debug/Release DLL·LIB；缺 Debug 库时提示无法编译 Debug 及后果；识别 MD/MTd CRT  
+- **实现方式**：`PackageScanner`；`PrecheckSummary`；`PeAnalyzer`；QML 预检结果面板  
+- **样例**：`ReleaseOnly_A` / `ReleaseOnly_B`（实测：`R=PASS D=FAIL`）
+
+#### 静态 + 动态 · 头文件 / 符号冲突
+- **现象**：同厂家多模型集成后偶发崩溃  
+- **场景 / 原因**：结构体重名、无命名空间隔离，合进同一模型库易崩  
+- **工具操作**：多型号加入列表 → **一键预检** → 头文件冲突表 / 报告「跨型号头文件冲突」  
+- **功能实现**：同包及跨型号头文件集合冲突分析（**手工扫描，避免 MSVC `std::regex` 大头文件栈溢出闪退**）；导出与 PE 交叉比对  
+- **实现方式**：`HeaderAnalyzer::AnalyzeHeaderSet` / `VerifyConsistency`；`ReportGenerator` Fleet 章节  
+- **样例**：`HeaderClash_A` + `HeaderClash_B`（成对冲突 FAIL）；对照 `TcPass_A` + `TcPass_C`（隔离命名可 PASS）
+
+#### 动态 · DLL 接口与加载
+- **现象**：主程序无法加载模型或初始化即崩  
+- **工具操作**：一键预检 / 「DLL 接口与加载」单项  
+- **功能实现**：Release 宿主对 **Release DLL 执行 `LoadLibrary`**；**Debug（`/MDd`）DLL 仅做 PE 并标记 `SKIP:`**（避免 CRT 冲突整进程闪退）；汇总时 SKIP 不计入失败分母  
+- **实现方式**：`DllLoader` + SEH；`PrecheckSummary`（`dll_load`）  
+- **说明**：要在匹配 CRT 下验证 Debug 库，请使用 Debug 构建的预检工具或 Harness
+
+#### 动态 · 多线程安全（SEH / 返回码）
+- **现象**：XSIM 勾选多线程后崩溃  
+- **场景 / 原因**：模型未做线程安全  
+- **工具操作**：编译型号 →「多线程稳定性」→ **执行多线程测试**；或一键预检自动跑  
+- **功能实现**：多线程各跑独立 UserMain；记录成功/失败/SEH  
+- **实现方式**：`ConcurrencyTester::Run`（MultiThread）  
+- **样例 / 实测**：`SehFault_*` 可必现 SEH；`ThreadUnsafe_*` 多为**静默竞态**——Create 可返回同一全局句柄，但 4 线程生命周期仍可能 **SEH/返回码全 0**（见 0.2）
+
+#### 动态 · 多实例 / 状态隔离
+- **现象**：同一武器发射多枚崩溃或状态串扰  
+- **场景 / 原因**：不支持多实例或集成越界  
+- **工具操作**：「型号与代码」写 `MoCreate/Init/Step/Destroy` 并编译一次 →「专项测试 · 单线程多对象」设对象数/容差/调度后 **基线与交错**；或「多型号并行」设实例数；可选「跨型号对象交错」  
+- **功能实现**：基线 vs 单线程 Step 交错；轨迹偏差、返回码、SEH  
+- **实现方式**：`MultiObjectHarness` + `SingleThreadMultiObjectTester` + `FleetSingleThreadMultiObjectTester`  
+- **样例 / 实测**：`SingleInstance_*` 二次 Create 属 UB，**未必当场 SEH**——宜用多对象 `objectCount≥2` 强化暴露；`TcPass_*` 双 Create / 生命周期宜 PASS
+
+#### 动态 · 模型间干扰 / 内存破坏
+- **现象**：同厂家不同模型同场景冲突、数据异常  
+- **场景 / 原因**：共享全局/单例环境，或越界写坏公共数据  
+- **工具操作**：多型号同时添加 → 全部编译 → **多型号并行** / **跨型号对象交错**  
+- **功能实现**：多路径 Harness 同进程并发；单线程跨型号 Step 交错比轨迹  
+- **实现方式**：`ConcurrencyTester::RunMultiModel`；`FleetSingleThreadMultiObjectTester`  
+- **样例 / 实测**：`SharedKernel_A/B` 单包生命周期可 PASS，**需 A+B 同进程**才易暴露；对照 `TcPass_A/B/C`
+
+### 0.2 部分解决（可检测风险，尚无完整专项或无法根治）
+
+#### 动态 · 静默数据竞态（无 SEH）
+- **现象**：多线程下偶发数据错乱但不崩溃  
+- **工具现状**：多线程项主要看 **SEH + UserMain 返回码**，不比轨迹指纹  
+- **样例**：`ThreadUnsafe_A/B`（实测：单例句柄可检出；mt4 仍可能 fail=0）  
+- **仍缺**：串行基线 vs 并发同种子指纹比对（产品级增强项）
+
+#### 动态 · CRT / ABI 与跨模块内存
+- **现象**：初始化路径参数带 `c_str()` 读不到路径  
+- **场景 / 原因**：双方 CRT 不匹配、堆隔离  
+- **工具操作**：一键预检 / PE 页看 **CRT MD/MT**；UserMain 由本工具 MSVC 统一编 Harness  
+- **样例**：`CrtMd_A`（/MD）、`CrtMt_B`（/MT）——实测均可 Load+短生命周期 PASS，**仅为 PE 对照**，无跨堆 FAIL 判定  
+- **仍缺**：不能改写厂家 DLL 的 CRT；无「跨堆传 `c_str`」自动化专项
+
+#### 动态 · 倍速调度 / 数值稳定性
+- **现象**：同一枚弹加速到约 50 倍速崩溃  
+- **工具操作**：「UserMain 性能压测」设次数与目标 Hz / **内存上限(MB)**；可在 UserMain 中放大 `step_dt`  
+- **功能实现**：帧预算 PASS/WARN/FAIL；WorkingSet/PrivateUsage 增长超限可提前结束（防 OOM 闪退）  
+- **仍缺**：无内置「N 倍速想定」专项
+
+#### 动态 · 内存泄漏监测
+- **工具操作**：性能压测页看泄漏率 / 内存上限  
+- **样例**：`MemLeak_A`（实测约 `0.25MB@200step`，可被监测捕获）
+
+#### 环境兼容 · 依赖 / ABI / 版本
+- **工具操作**：PE 页看导入与架构；授权放 DLL 同级；一键预检看缺失依赖  
+- **仍缺**：无法覆盖全部主程序 ABI 与授权加密逻辑
+
+#### 架构与集成设计 · 隐含依赖
+- **工具操作**：用 **UserMain / Mo\*** 自行编排；报告对未测项标 N/A  
+- **仍缺**：无法消除未文档化隐含依赖
+
+### 0.3 问题类型索引
+
+- **静态（构建/链接）** — 已解决：Debug 库缺失检测（`ReleaseOnly_*`）  
+- **静态+动态（头文件/符号）** — 已解决：跨型号冲突检测（`HeaderClash_*` / `TcPass_A+C`）  
+- **动态（加载）** — 已解决：Release 加载 + Debug SKIP 汇总；部分：Debug 须匹配宿主 CRT  
+- **动态（多线程）** — 已解决：SEH/返回码崩溃复现；部分解决：静默竞态  
+- **动态（多实例/隔离）** — 已解决：多对象交错 + 并行实例；部分：纯 UB 越界未必 SEH  
+- **动态（模型间干扰）** — 已解决：多型号并行 / 跨型号交错；需成对样例同测  
+- **动态（CRT/ABI）** — 部分解决：CRT 识别；无跨堆专项  
+- **动态（倍速/数值/泄漏）** — 部分解决：帧预算压测 + 内存上限；`MemLeak_A`  
+- **环境兼容 / 架构** — 部分解决：依赖扫描 + 灵活编排  
+
+### 0.4 三类并发测试如何区分（不冗余）
+
+- **多型号并行**：多线程；各型号完整 `UserMain`；侧重跨 DLL 同进程 SEH/返回码  
+- **多线程稳定性**：多线程；单型号多次 `UserMain`；侧重线程安全冒烟（SEH/返回码）  
+- **单线程多对象**（含跨型号）：**单线程**；`Mo*` / Create·Init·**Step 交错**·Destroy；侧重**基线 vs 交错轨迹偏差**（串扰）  
+
+多线程 PASS ≠ 多对象 PASS；多对象 PASS ≠ 多型号并行 PASS。
+
+---
 
 ## 1. 项目概述
 
-本工具为面向仿真引擎集成的专用桌面自动化预检系统，旨在对第三方提供的武器模型 C++ 动态库 (DLL) 进行**静态 PE 结构检查**、**受控安全动态加载与 SEH 崩溃隔离**、**高精度性能压测与内存泄漏监测**、**运动轨迹/坐标系逻辑校验**以及**自动化预检报告生成**。
+桌面端一站式能力：
+
+- 规范模型包静态检查（`include/` / `lib/` / `models/`）
+- 受控动态加载与 SEH 硬件异常隔离（一键预检：Release 加载，Debug 跳过）
+- 可编译统一的 Harness：一份 `Mo*` 对象代码、一次编译产出同时支持单对象与多对象的 DLL（「型号与代码 · 保存并编译」）
+- UserMain 性能压测、内存增长监测（含内存上限）、实时性判定
+- 多型号并行 / 单型号多线程稳定性
+- 单线程多对象基线/交错（「专项测试 · 单线程多对象」），以及**跨型号对象交错**
+- 二维经纬度轨迹；HTML 预检报告；预检总览四列表（状态 / 原因 / 可能导致）
+- 代码编辑器（QML 内建，含 C++ 语法高亮）；忙碌等候提示
+- **关闭自动保存会话**；启动时可选择是否还原
 
 ---
 
 ## 2. 技术栈与开发环境
 
-* **开发环境**：Visual Studio 2017 (MSVC v141 Toolset)
-* **界面框架**：Qt 5.11 (x64) (`D:\HR\DEV\ThirdParty\Qt5.11\vc140\x64`)
-* **图表组件**：`Qt5::Charts` (`QChart`, `QChartView`, `QLineSeries`)
-* **构建系统**：CMake 3.12+ (指定 `Visual Studio 15 2017 Win64` 生成器)
-* **系统 API**：Win32 PE Parsing API, `psapi.lib` (Process Memory Counters), Structured Exception Handling (SEH `__try / __except`)
-* **关键编译项**：`add_compile_definitions(NOMINMAX)`, `/utf-8`
+- **编译器**：MSVC（推荐 VS2017+ / VS2022），`/utf-8`，`NOMINMAX`  
+- **UI**：QML（Qt Quick Controls 2）+ Qt Charts，入口 `QmlAppController`  
+- **构建**：CMake 3.12+；一键脚本 `build.bat`  
+- **系统 API**：Win32 PE、`LoadLibraryExW`、SEH、`psapi`  
 
 ---
 
-## 3. 已实现需求与功能模块对照
+## 3. 使用说明
 
-| 需求模块 | 编号 | 功能说明 | 对应实现源码文件 |
-| :--- | :--- | :--- | :--- |
-| **静态环境检查** | **F1** | 依赖项扫描 (Import Directory 扫描，丢失 DLL 标红) | [`src/core/PeAnalyzer.h`](file:///d:/HR/Game/ModelPrecheck/src/core/PeAnalyzer.h) / [`PeAnalyzer.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/PeAnalyzer.cpp) |
-| | **F2** | 二进制属性提取 (x64/x86 位数、MD/MT CRT 链接识别) | `PeAnalyzer.cpp` (PE DOS/NT Header Parsing) |
-| | **F3** | 导出符号校验 (Export Directory 比对 `Init/Step/Destroy`) | `PeAnalyzer.cpp` |
-| **动态加载测试** | **F4** | 安全加载试验 (`LoadLibraryExW` + SEH 保护) | [`src/utils/SehHelper.cpp`](file:///d:/HR/Game/ModelPrecheck/src/utils/SehHelper.cpp) / [`src/core/DllLoader.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/DllLoader.cpp) |
-| | **F5** | 接口指针绑定 (`GetProcAddress` 动态绑定与自定义别名映射) | `DllLoader.cpp` / [`src/ui/PropertyEditorWidget.cpp`](file:///d:/HR/Game/ModelPrecheck/src/ui/PropertyEditorWidget.cpp) |
-| | **F6** | 静态内存开销 (记录 DLL 加载前后 Working Set 差值) | [`src/utils/MemoryUtils.cpp`](file:///d:/HR/Game/ModelPrecheck/src/utils/MemoryUtils.cpp) |
-| **性能压力评估** | **F7** | 步进耗时统计 (1k~100k 步进, 纳秒级记录 Min/Max/Avg/Jitter) | [`src/core/PerfProfiler.h`](file:///d:/HR/Game/ModelPrecheck/src/core/PerfProfiler.h) / [`PerfProfiler.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/PerfProfiler.cpp) |
-| | **F8** | 内存增长监测 (连续步进采样，估算 10,000 步内存泄露速率) | `PerfProfiler.cpp` / `MemoryUtils.cpp` |
-| | **F9** | 实时性评估 (对比 50Hz/100Hz/1000Hz 帧预算，PASS/WARN/FAIL) | `PerfProfiler.cpp` |
-| **逻辑与坐标校验** | **F10** | 交互式参数输入 (初始经纬高、速度、姿态角及别名映射表) | `PropertyEditorWidget.cpp` |
-| | **F11** | 数据记录与曲线 (输出表格与 QtCharts 耗时/内存/轨迹图) | [`src/ui/ChartViewerWidget.cpp`](file:///d:/HR/Game/ModelPrecheck/src/ui/ChartViewerWidget.cpp) |
-| | **F12** | 坐标系一致性 (NaN检测、物理边界、弧度/角度判断、跳变识别) | [`src/core/FunctionalVerifier.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/FunctionalVerifier.cpp) |
-| **报告生成导出** | **F13** | 预检报告导出 (自动生成自包含样式 HTML 报告并支持导出) | [`src/core/ReportGenerator.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/ReportGenerator.cpp) |
-
----
-
-## 4. 目录架构说明
-
-```
-d:/HR/Game/ModelPrecheck/
-├── README.md                            # 本项目技术规格、需求及二次开发文档
-├── AGENTS.md                            # AI 智能体项目上下文与指令
-├── CMakeLists.txt                       # 根 CMake 构建文件 (支持 VS2017 + Qt 5.11)
-├── src/
-│   ├── main.cpp                         # 程序主入口
-│   ├── core/                            # 预检引擎核心逻辑层
-│   │   ├── PeAnalyzer.h / .cpp          # 静态 PE 格式与依赖关系分析器
-│   │   ├── DllLoader.h / .cpp           # 安全 LoadLibrary 与 SEH 符号绑定器
-│   │   ├── PerfProfiler.h / .cpp        # 多线程性能与内存泄露分析器
-│   │   ├── FunctionalVerifier.h / .cpp  # Trajectory 轨迹平滑度与坐标系/单位校验器
-│   │   └── ReportGenerator.h / .cpp     # 预检报告 HTML 渲染与导出器
-│   ├── utils/                           # Win32 底层工具库
-│   │   ├── MemoryUtils.h / .cpp         # Win32 Process Memory (psapi.lib) 内存统计
-│   │   └── SehHelper.h / .cpp           # Windows 原生 SEH (__try/__except) 崩溃捕获器
-│   └── ui/                              # Qt 5.11 UI 界面层
-│       ├── MainWindow.h / .cpp          # 主窗口界面 (Tab页, 状态Badges, 仪表盘)
-│       ├── PropertyEditorWidget.h / .cpp# 参数设置与接口符号映射面板
-│       ├── ChartViewerWidget.h / .cpp   # QtCharts 耗时/内存/轨迹图表组件
-│       └── LogConsoleWidget.h / .cpp    # 格式化彩标控制台日志组件
-└── sample_models/                       # 开箱即用的测试 DLL 源码
-    ├── StandardWeapon/                  # 满足合规标准的样本模型 (StandardWeapon.dll)
-    └── FaultyWeapon/                    # 故意制造内存泄漏与除零崩溃的测试样本 (FaultyWeapon.dll)
-```
-
----
-
-## 5. 构建与编译步骤
-
-在 Windows PowerShell 中执行以下命令：
+### 3.1 构建与启动
 
 ```powershell
-# 1. 配置 CMake 工程 (生成 Visual Studio 2017 64位解决方案)
-cmake -G "Visual Studio 15 2017 Win64" -B build
+# 一键构建并安装到 dist/
+.\build.bat
 
-# 2. 编译 Release 目标
-cmake --build build --config Release
+# 或手动构建
+cmake -G "Visual Studio 17 2022" -A x64 -B build
+cmake --build build --config Release --target ModelValidator
 ```
 
-编译生成文件存放于 `build/Release/`：
-- `ModelValidator.exe`
-- `StandardWeapon.dll`
-- `FaultyWeapon.dll`
+可执行文件：`build\Release\ModelValidator.exe`（或 `dist\ModelValidator.exe`）。若 `dist` 被占用无法覆盖，请直接运行 `build\Release` 下新编译产物。
+
+样例模型包：`dist\sample_models\<型号名>\{include,lib,models}\`。
+
+### 3.1.1 换机部署（拷贝 dist）
+
+整夹拷贝 `dist/` 即可。目标机说明见 **`dist/README.md`**：
+
+- 缺 VC 运行库 → `dist/prerequisites/vc_redist.x64.exe`
+- 需本机编译 Harness → `dist/prerequisites/install_build_tools.bat`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy\prerequisites\download_prerequisites.ps1
+```
+
+### 3.1.2 样例矩阵冒烟（无 GUI）
+
+对全部 `sample_models` 跑静态 + Release 加载 + 短生命周期 + 双 Create（及部分多线程轻测）：
+
+```powershell
+cmake --build build --config Release --target SampleModelsMatrix
+$env:PATH = "<Qt5>\bin;" + $env:PATH
+.\build\Release\SampleModelsMatrix.exe .\dist\sample_models
+```
+
+输出：`dist/sample_models_matrix.csv`、控制台配对头冲突结果。静态-only 另有目标 `StaticPrecheckSmoke`。
+
+### 3.2 准备第三方模型包（固定目录结构）
+
+```text
+YourModelPackage\
+  include\          # 头文件 .h / .hpp
+  lib\              # 导入库 / 静态库 .lib
+  models\           # 模型动态库 .dll（授权建议与 dll 同级）
+```
+
+加载使用 `LOAD_WITH_ALTERED_SEARCH_PATH`。
+
+### 3.3 基本操作流程
+
+1. **添加型号** → 浏览模型包根目录（须含 `include/lib/models`）  
+2. **勾选头文件** → 参与编译与冲突分析  
+3. **编写对象生命周期代码**（`MoCreate/MoInit/MoStep/MoDestroy`；轨迹由 Harness 自动采集）  
+4. **配置随机变量 `R.*`**，并在同一页设置**步数 / 步长**（运行期生效，改后无需重新编译）  
+5. **保存并编译**（一次编译即可覆盖全部测试项）→ 输出到 `TestModel\<型号名>\`  
+6. **一键预检** → 静态（含头冲突）+ Release DLL 加载 + 压测/并发/多对象等；未编译但配置完整的型号会自动编译；结束后弹出总览并同步各导航页  
+7. **专项测试**：性能/内存/轨迹、多型号并行、多线程、单线程多对象（含跨型号）  
+8. **导出 HTML 报告**  
+
+会话：关闭写入 `exe同级/session/last_session.json`；启动可询问还原。若一键预检异常退出，可查看同级 `precheck_crash_trail.txt` 最后阶段。
+
+### 3.4 界面分区一览
+
+- **预检控制**：一键预检、导出报告  
+- **状态 Badges** / **操作流程条** / **功能导航**  
+- **型号与代码**、**专项测试**、**底部日志**  
+- 性能页含 **内存上限(MB)**（默认 256；0=不限制）
+
+### 3.5 样例模型（`dist/sample_models` 测试用例包）
+
+由 `sample_models/build_testcase_models.ps1` 生成，与 `dist/模型集成问题.xlsx`「测试用例索引」对应：
+
+- `ReleaseOnly_A/B` — 仅 Release；实测 `D=FAIL`  
+- `HeaderClash_A/B` — 头冲突；成对冲突 FAIL  
+- `ThreadUnsafe_A/B` — 非线程安全 / 全局单例；同句柄可检出，mt SEH 难必现  
+- `SingleInstance_A/B` — 单槽位越界；双 Create 未必 SEH  
+- `SharedKernel_A/B` — 共享映射干扰；需成对同进程  
+- `CrtMd_A` / `CrtMt_B` — CRT 对照；PE 差异，非跨堆专项  
+- `MemLeak_A` — 故意泄漏；压测可见内存增长  
+- `SehFault_A/B` — 故意 SEH；Step/Init 异常可捕获  
+- `TcPass_A/B/C` — 干净对照；单包宜 PASS，A+C 头可共存  
+
+历史演示包名（`CompatibleWeapon*` / `ConflictWeapon*` / `PrecheckDemoWeapon` 等）若仍在树中，用法与上列同类，优先以 `sample_models` 测试包为准。
 
 ---
 
-## 6. 二次开发与需求扩展指南 (Extension Guide)
+## 4. 功能实现对照
 
-下次需扩展功能时，可参考以下文件进行扩充：
+### 4.1 核心能力
 
-### 6.1 扩充新的模型接口标准或结构体
-- 在 [`src/utils/SehHelper.h`](file:///d:/HR/Game/ModelPrecheck/src/utils/SehHelper.h) 中修改 `WeaponModelParams` / `WeaponModelOutput` 结构体定义及函数指针原型。
-- 在 [`src/core/DllLoader.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/DllLoader.cpp) 中更新调用包装函数。
+- **模型包扫描** — `PackageScanner`  
+- **头文件规范与冲突** — `HeaderAnalyzer`（无危险 `std::regex` 全量扫描）  
+- **LIB / PE** — `LibAnalyzer`、`PeAnalyzer`（含文件尺寸保护）  
+- **动态加载 + SEH** — `DllLoader`、`SehHelper`（UTF-8 路径；Load/Free SEH）  
+- **UserMain / 多对象 Harness** — `UserCodeHarness`、`MultiObjectHarness`  
+- **性能压测** — `PerfProfiler`（次数封顶、内存上限、PrivateUsage）  
+- **多型号 / 多线程** — `ConcurrencyTester`  
+- **单线程多对象 / 跨型号交错** — `SingleThreadMultiObjectTester`、`FleetSingleThreadMultiObjectTester`  
+- **预检总览** — `PrecheckSummary`（`dll_load` 区分 SKIP）  
+- **HTML / 会话 / UI** — `ReportGenerator`、`SessionStore`、`QmlAppController`  
 
-### 6.2 增加新的坐标系或物理逻辑校验规则
-- 在 [`src/core/FunctionalVerifier.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/FunctionalVerifier.cpp) 的 `VerifyTrajectory` 函数中增加自定义规则（例如加速度阈值检查、姿态角变化率限制等）。
+### 4.2 需求编号对照（历史 F1–F13）
 
-### 6.3 扩充报告导出格式 (如 PDF / JSON)
-- 在 [`src/core/ReportGenerator.cpp`](file:///d:/HR/Game/ModelPrecheck/src/core/ReportGenerator.cpp) 中新增 `GenerateJson()` 或使用 Qt `QPrinter` 打印成 PDF。
+- **F1–F3** 依赖/架构/CRT/导出 → 一键预检 + PE 页  
+- **F4–F6** 安全加载与符号 → 一键预检对 **Release DLL**；Debug 见 SKIP  
+- **F7–F9** 耗时/内存/实时性 → 性能压测 / 内存监测  
+- **F10–F11** 参数与曲线 → 随机变量 + Charts；二维轨迹  
+- **F12** 坐标一致性 → `FunctionalVerifier` + 试跑采集  
+- **F13** 报告导出 → 预检报告页 + HTML  
+
+---
+
+## 5. 目录结构
+
+```text
+ModelPrecheck/
+├── README.md
+├── AGENTS.md
+├── build.bat
+├── CMakeLists.txt
+├── third_party/
+├── src/
+│   ├── core/
+│   ├── utils/
+│   └── ui/
+├── sample_models/               # 源码 + build_testcase_models.ps1
+├── tests/                       # StaticPrecheckSmoke、SampleModelsMatrix…
+├── deploy/prerequisites/
+└── dist/                        # 安装输出、模型集成问题.xlsx、sample_models/
+```
+
+运行时旁路（exe 同级）：
+
+```text
+TestModel/<型号名>/
+session/last_session.json
+precheck_crash_trail.txt         # 一键预检阶段轨迹（异常闪退时查阅）
+sample_models/...
+```
+
+---
+
+## 6. 二次开发提示
+
+### 6.1 扩展模型接口结构体
+
+修改 `src/utils/SehHelper.h`；同步样例头文件与调用约定。
+
+### 6.2 扩展对象生命周期代码 / 轨迹
+
+- 一个型号只写一份代码（`MoCreate / MoInit / MoStep / MoDestroy`），预检、压测、并发、多对象全部共用
+- `UserCodeHarness::GenerateUnifiedSource()` — 统一 Harness 源码生成器，`MultiObjectHarness` 复用同一份源码
+- 步数 / 步长由 `UserCodeHarness::SetStepParams()` 在**运行期**传入（界面取「型号与代码」页设置），改动无需重新编译
+- 改签名后重新编译 Harness
+
+### 6.3 扩展校验与报告
+
+- `FunctionalVerifier::VerifyTrajectory`  
+- `ReportGenerator::GenerateHtml` / `GenerateFleetHtml`  
+- 集成问题表与实测：更新 `dist/模型集成问题.xlsx` 后可同步本节 0.x  
+
+### 6.4 会话与 UI
+
+- QML 界面：`src/qml/Main.qml` + `QmlAppController`（无 Widgets 界面）
+- `SessionStore` 持久化型号、对象代码、随机变量与运行参数
+
+### 6.5 强制约束（见 AGENTS.md）
+
+1. 包含 `<windows.h>` 前定义 `NOMINMAX`  
+2. DLL 调用经 SEH（`SehHelper`）  
+3. 勿在头文件引入 `QT_CHARTS_USE_NAMESPACE`；Charts 仅放 `.cpp`  
+4. 头文件冲突分析避免对大文件使用 MSVC 易栈溢出的 `std::regex`  
+5. Release 宿主不要对 `/MDd` Debug 模型 DLL 做进程内 `LoadLibrary`（用 SKIP 或 Debug 宿主）  

@@ -1,0 +1,1376 @@
+#include "MultiObjectHarness.h"
+#include "../utils/MemoryUtils.h"
+#include "../utils/QtEncoding.h"
+#include <QCoreApplication>
+#include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
+#include <QProcess>
+#include <QSet>
+#include <QStringList>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cctype>
+#include <cstring>
+#include <numeric>
+#include <random>
+#include <set>
+#include <sstream>
+
+namespace {
+
+QString qPath(const std::string& value) {
+    return QString::fromUtf8(value.c_str());
+}
+
+QString quoteArg(const QString& value) {
+    return QStringLiteral("\"%1\"").arg(value);
+}
+
+std::wstring toWide(const std::string& value) {
+    if (value.empty()) return std::wstring();
+    const int size = MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, nullptr, 0);
+    std::wstring result(size > 1 ? static_cast<size_t>(size - 1) : 0, L'\0');
+    if (size > 1) MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, &result[0], size);
+    return result;
+}
+
+void CopyDependencyDllsBesideHarness(const std::vector<std::string>& searchDirs,
+                                     const QString& destDir,
+                                     const QString& harnessDllPath,
+                                     std::string& log) {
+    if (destDir.isEmpty()) return;
+    QDir().mkpath(destDir);
+    const QString harnessName = QFileInfo(harnessDllPath).fileName();
+    QSet<QString> copied;
+    for (const auto& root : searchDirs) {
+        if (root.empty()) continue;
+        QDirIterator it(qPath(root), QStringList() << QStringLiteral("*.dll"),
+                        QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            const QFileInfo info = it.fileInfo();
+            if (!harnessName.isEmpty()
+                && info.fileName().compare(harnessName, Qt::CaseInsensitive) == 0) {
+                log += "INFO: 跳过与 Harness 同名的模型 DLL（避免覆盖）: "
+                     + qToUtf8(info.fileName()) + "\n";
+                continue;
+            }
+            if (copied.contains(info.fileName())) continue;
+            const QString dest = QDir(destDir).filePath(info.fileName());
+            if (!harnessDllPath.isEmpty()
+                && QFileInfo(dest) == QFileInfo(harnessDllPath)) {
+                continue;
+            }
+            if (QFile::exists(dest)) QFile::remove(dest);
+            if (QFile::copy(info.absoluteFilePath(), dest)) {
+                copied.insert(info.fileName());
+                log += "INFO: 已复制依赖 DLL 到 Harness 目录: "
+                     + qToUtf8(info.fileName()) + "\n";
+            }
+        }
+    }
+}
+
+void SetDllDirectoryPreferringModels(const std::vector<std::string>& searchDirs) {
+    for (const auto& dir : searchDirs) {
+        QDirIterator it(qPath(dir), QStringList() << QStringLiteral("*.dll"),
+                        QDir::Files, QDirIterator::Subdirectories);
+        if (it.hasNext()) {
+            SetDllDirectoryA(dir.c_str());
+            return;
+        }
+    }
+    if (!searchDirs.empty()) SetDllDirectoryA(searchDirs.front().c_str());
+}
+
+typedef int (*RunRaw)(const double*, int, const int*, int,
+                      int, int, double, double, int, unsigned int);
+typedef int (*GetResultRaw)(int, int*, int*, int*, unsigned long*,
+                            int*, double*, const char**, int*, int*);
+typedef int (*GetTrackRaw)(int, int, int, double*, double*);
+typedef double (*GetMetricRaw)();
+
+int safeRun(RunRaw fn, const double* doubles, int doubleCount,
+            const int* ints, int intCount, const MultiObjectTestConfig& config,
+            DWORD* exceptionCode) {
+    __try {
+        if (exceptionCode) *exceptionCode = 0;
+        return fn(doubles, doubleCount, ints, intCount,
+                  config.objectCount, config.stepCount, config.stepDt,
+                  config.tolerance, static_cast<int>(config.schedule),
+                  config.randomSeed);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (exceptionCode) *exceptionCode = GetExceptionCode();
+        return -1;
+    }
+}
+
+int safeGetResult(GetResultRaw fn, int objectId, int* baselineRc,
+                  int* interleavedRc, int* exception, unsigned long* exceptionCode,
+                  int* faultStep, double* deviation, const char** detail,
+                  int* baselineCount, int* interleavedCount) {
+    __try {
+        return fn(objectId, baselineRc, interleavedRc, exception, exceptionCode,
+                  faultStep, deviation, detail, baselineCount, interleavedCount);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+int safeGetTrack(GetTrackRaw fn, int objectId, int baseline, int pointIndex,
+                 double* latitude, double* longitude) {
+    __try {
+        return fn(objectId, baseline, pointIndex, latitude, longitude);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+double safeGetMetric(GetMetricRaw fn) {
+    __try {
+        return fn();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0.0;
+    }
+}
+
+std::string mappingBaseType(std::string type) {
+    const char* qualifiers[] = {
+        "const", "volatile", "struct", "class", "__restrict", "__restrict__"
+    };
+    for (const char* qualifier : qualifiers) {
+        size_t position = std::string::npos;
+        while ((position = type.find(qualifier)) != std::string::npos)
+            type.erase(position, std::strlen(qualifier));
+    }
+    type.erase(std::remove(type.begin(), type.end(), '*'), type.end());
+    type.erase(std::remove(type.begin(), type.end(), '&'), type.end());
+    const size_t first = type.find_first_not_of(" \t\r\n");
+    const size_t last = type.find_last_not_of(" \t\r\n");
+    return first == std::string::npos ? std::string()
+        : type.substr(first, last - first + 1);
+}
+
+std::string mappingVariableName(const std::string& type) {
+    std::string name = "mapped_";
+    for (char character : mappingBaseType(type)) {
+        name += std::isalnum(static_cast<unsigned char>(character))
+            ? character : '_';
+    }
+    return name;
+}
+
+std::string escapeCppString(const std::string& value) {
+    std::string escaped;
+    for (char character : value) {
+        if (character == '\\' || character == '"') escaped += '\\';
+        escaped += character;
+    }
+    return escaped;
+}
+
+std::string memberAccess(const std::string& variable,
+                         const std::string& fieldPath) {
+    return variable + "." + fieldPath;
+}
+
+} // namespace
+
+MultiObjectHarness::MultiObjectHarness() = default;
+MultiObjectHarness::~MultiObjectHarness() { Unload(); }
+
+CompileResult MultiObjectHarness::CompileMapping(
+    const InterfaceMappingProfile& profile,
+    const std::vector<RandomVarDef>& randomVars,
+    const std::string& workDir,
+    const std::string& outputBaseName) {
+    MultiObjectHarnessConfig config;
+    config.headerPaths.push_back(profile.headerPath);
+    config.randomVars = randomVars;
+    config.workDir = workDir;
+    config.outputBaseName = outputBaseName;
+    const QString headerDirectory =
+        QFileInfo(qPath(profile.headerPath)).absolutePath();
+    config.includeDirs.push_back(qToUtf8(headerDirectory));
+
+    std::set<std::string> structureTypes;
+    auto collectStructures = [&](const FunctionBinding& function) {
+        for (const auto& parameter : function.parameters) {
+            if (parameter.source == MappingValueSource::InputStructPointer
+                || parameter.source == MappingValueSource::InputStructValue
+                || parameter.source == MappingValueSource::OutputStructPointer
+                || parameter.source == MappingValueSource::OutputStructValue) {
+                const std::string type = mappingBaseType(parameter.typeName);
+                if (!type.empty()) structureTypes.insert(type);
+            }
+        }
+    };
+    collectStructures(profile.createFunction);
+    collectStructures(profile.initFunction);
+    collectStructures(profile.stepFunction);
+    collectStructures(profile.destroyFunction);
+
+    auto argumentExpression = [&](const ParameterBinding& parameter,
+                                  bool inStep) {
+        const std::string structure = mappingVariableName(parameter.typeName);
+        switch (parameter.source) {
+        case MappingValueSource::Handle:
+            return std::string("reinterpret_cast<") + profile.handleType
+                + ">(m_handle)";
+        case MappingValueSource::InputStructPointer:
+        case MappingValueSource::OutputStructPointer:
+            return std::string("&") + structure;
+        case MappingValueSource::InputStructValue:
+        case MappingValueSource::OutputStructValue:
+            return structure;
+        case MappingValueSource::FixedValue:
+            return parameter.value.empty() ? std::string("0") : parameter.value;
+        case MappingValueSource::RandomVariable:
+            return std::string("R.") + parameter.value;
+        case MappingValueSource::DeltaTime:
+            return std::string("dt");
+        case MappingValueSource::StepIndex:
+            return inStep ? std::string("stepIndex") : std::string("0");
+        case MappingValueSource::ObjectId:
+            return std::string("objectId");
+        case MappingValueSource::PreviousOutput:
+            return parameter.value.empty() ? std::string("0")
+                : mappingVariableName(profile.outputStructType) + "."
+                    + parameter.value;
+        case MappingValueSource::NullPointer:
+            return std::string("nullptr");
+        }
+        return std::string("nullptr");
+    };
+    auto arguments = [&](const FunctionBinding& function, bool inStep) {
+        std::string result;
+        for (size_t i = 0; i < function.parameters.size(); ++i) {
+            if (i) result += ", ";
+            result += argumentExpression(function.parameters[i], inStep);
+        }
+        return result;
+    };
+    auto fieldExpression = [](const StructFieldBinding& field, bool inStep) {
+        std::string expression;
+        switch (field.source) {
+        case MappingValueSource::FixedValue:
+            expression = field.value.empty() ? "0" : field.value;
+            break;
+        case MappingValueSource::RandomVariable:
+            expression = "R." + field.value;
+            break;
+        case MappingValueSource::DeltaTime:
+            expression = "dt";
+            break;
+        case MappingValueSource::StepIndex:
+            expression = inStep ? "stepIndex" : "0";
+            break;
+        case MappingValueSource::ObjectId:
+            expression = "objectId";
+            break;
+        case MappingValueSource::PreviousOutput:
+            expression = field.value;
+            break;
+        default:
+            expression = field.value.empty() ? "0" : field.value;
+            break;
+        }
+        if (field.objectOffset != 0.0)
+            expression += " + objectId * " + std::to_string(field.objectOffset);
+        return expression;
+    };
+
+    std::ostringstream adapter;
+    for (const auto& structure : structureTypes) {
+        adapter << "static_assert(std::is_standard_layout<" << structure
+                << ">::value, \"Mapped ABI structure must be standard-layout: "
+                << structure << "\");\n";
+    }
+    adapter << "class ModelObjectAdapter {\npublic:\n"
+            << " ModelObjectAdapter() : m_module(nullptr), m_handle(nullptr), "
+               "m_create(nullptr), m_init(nullptr), m_step(nullptr), m_destroy(nullptr) {}\n"
+            << " int Initialize(int objectId, const RandomBag& R, double dt) {\n"
+            << "  m_module = LoadLibraryW(L\"" << escapeCppString(profile.dllPath)
+            << "\"); if (!m_module) return -1001;\n"
+            << "  m_create = reinterpret_cast<CreateFn>(GetProcAddress(m_module, \""
+            << profile.createFunction.functionName << "\"));\n"
+            << "  m_init = reinterpret_cast<InitFn>(GetProcAddress(m_module, \""
+            << profile.initFunction.functionName << "\"));\n"
+            << "  m_step = reinterpret_cast<StepFn>(GetProcAddress(m_module, \""
+            << profile.stepFunction.functionName << "\"));\n"
+            << "  m_destroy = reinterpret_cast<DestroyFn>(GetProcAddress(m_module, \""
+            << profile.destroyFunction.functionName << "\"));\n"
+            << "  if (!m_create || !m_init || !m_step || !m_destroy) return -1002;\n";
+    for (const auto& field : profile.fieldBindings) {
+        adapter << "  "
+                << memberAccess(mappingVariableName(field.structType),
+                                field.fieldPath)
+                << " = " << fieldExpression(field, false) << ";\n";
+    }
+    adapter << "  auto created = m_create("
+            << arguments(profile.createFunction, false) << ");\n"
+            << "  m_handle = reinterpret_cast<void*>(created);"
+               " if (!m_handle) return -1003;\n"
+            << "  return static_cast<int>(m_init("
+            << arguments(profile.initFunction, false) << "));\n"
+            << " }\n"
+            << " int Step(int stepIndex, double dt, double& outLat, double& outLon) {\n"
+            << "  (void)stepIndex; (void)dt;\n";
+    for (const auto& field : profile.fieldBindings) {
+        if (field.source == MappingValueSource::DeltaTime
+            || field.source == MappingValueSource::StepIndex) {
+            adapter << "  "
+                    << memberAccess(mappingVariableName(field.structType),
+                                    field.fieldPath)
+                    << " = " << fieldExpression(field, true) << ";\n";
+        }
+    }
+    adapter << "  int rc = static_cast<int>(m_step("
+            << arguments(profile.stepFunction, true) << "));\n"
+            << "  outLat = static_cast<double>("
+            << memberAccess(mappingVariableName(profile.outputStructType),
+                            profile.latitudeField)
+            << ");\n"
+            << "  outLon = static_cast<double>("
+            << memberAccess(mappingVariableName(profile.outputStructType),
+                            profile.longitudeField)
+            << ");\n"
+            << "  return rc;\n }\n"
+            << " void Destroy() { if (m_handle && m_destroy) m_destroy("
+            << arguments(profile.destroyFunction, false)
+            << "); m_handle = nullptr; if (m_module) FreeLibrary(m_module);"
+               " m_module = nullptr; }\n"
+            << "private:\n"
+            << " using CreateFn = decltype(&" << profile.createFunction.functionName << ");\n"
+            << " using InitFn = decltype(&" << profile.initFunction.functionName << ");\n"
+            << " using StepFn = decltype(&" << profile.stepFunction.functionName << ");\n"
+            << " using DestroyFn = decltype(&" << profile.destroyFunction.functionName << ");\n"
+            << " HMODULE m_module; void* m_handle; CreateFn m_create;"
+               " InitFn m_init; StepFn m_step; DestroyFn m_destroy;\n";
+    for (const auto& structure : structureTypes)
+        adapter << " " << structure << " " << mappingVariableName(structure) << "{};\n";
+    adapter << "};\n";
+    config.adapterCode = adapter.str();
+    return Compile(config);
+}
+
+std::string MultiObjectHarness::DefaultAdapterTemplate() {
+    return
+        "// ModelObjectAdapter 是多对象测试与真实业务类之间的唯一适配层。\n"
+        "// 可在此类中直接持有你的业务封装类，并填充厂家要求的固定参数。\n"
+        "class ModelObjectAdapter {\n"
+        "public:\n"
+        "    ModelObjectAdapter() : m_handle(nullptr) {}\n"
+        "\n"
+        "    int Initialize(int objectId, const RandomBag& R, double dt) {\n"
+        "        m_handle = Model_Create();\n"
+        "        if (!m_handle) return -1;\n"
+        "        WeaponModelParams p{};\n"
+        "        p.init_lat = R.lat + objectId * 0.001;\n"
+        "        p.init_lon = R.lon + objectId * 0.001;\n"
+        "        p.init_alt = R.alt;\n"
+        "        p.init_speed = R.speed;\n"
+        "        p.init_heading = 45.0;\n"
+        "        p.init_pitch = 15.0;\n"
+        "        p.init_roll = 0.0;\n"
+        "        p.step_dt = dt;\n"
+        "        return Model_Init(m_handle, &p);\n"
+        "    }\n"
+        "\n"
+        "    int Step(int stepIndex, double dt, double& outLat, double& outLon) {\n"
+        "        (void)stepIndex; (void)dt;\n"
+        "        WeaponModelOutput output{};\n"
+        "        int rc = Model_Step(m_handle, &output);\n"
+        "        outLat = output.lat;\n"
+        "        outLon = output.lon;\n"
+        "        return rc;\n"
+        "    }\n"
+        "\n"
+        "    void Destroy() {\n"
+        "        if (m_handle) Model_Destroy(m_handle);\n"
+        "        m_handle = nullptr;\n"
+        "    }\n"
+        "\n"
+        "private:\n"
+        "    void* m_handle;\n"
+        "};\n";
+}
+
+// 与单对象 Harness 同样必须优先读打进资源的副本，不能用 __FILE__ 去源码目录取，
+// 否则换一台机器运行时会生成 #error "ModelObjectKit.h not found"（详见 UserCodeHarness.cpp）。
+std::string MultiObjectHarness::LoadModelObjectKitHeader() {
+    QStringList candidates;
+    candidates << QStringLiteral(":/core/ModelObjectKit.h")
+               << QDir(QCoreApplication::applicationDirPath())
+                      .filePath(QStringLiteral("ModelObjectKit.h"));
+    for (const QString& path : candidates) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly))
+            return file.readAll().toStdString();
+    }
+    return std::string("#error \"ModelObjectKit.h not found\"\n");
+}
+
+std::string MultiObjectHarness::GenerateUserPoolSource(
+    const UserHarnessConfig& config) const {
+    // 单对象与多对象共用同一个 Harness：一份用户代码、一个 DLL、一次编译
+    return UserCodeHarness::GenerateUnifiedSource(config, m_enabledVars);
+}
+
+CompileResult MultiObjectHarness::CompileUserPool(const UserHarnessConfig& config) {
+    CompileResult result;
+    Unload();
+    const std::string body = config.userMainBody;
+    if (body.find("MoModelType") == std::string::npos
+        || body.find("MoCreate") == std::string::npos
+        || body.find("MoInit") == std::string::npos
+        || body.find("MoStep") == std::string::npos
+        || body.find("MoDestroy") == std::string::npos) {
+        result.log =
+            "ERROR: 多对象代码须定义 MoModelType、MoCreate、MoInit、MoStep、MoDestroy\n";
+        return result;
+    }
+    m_enabledVars.clear();
+    for (const auto& variable : config.randomVars) {
+        if (variable.enabled && !variable.name.empty())
+            m_enabledVars.push_back(variable);
+    }
+    const QString workDir = QDir(qPath(config.workDir)).absolutePath();
+    if (!QDir().mkpath(workDir)) {
+        result.log = "ERROR: 无法创建多对象 Harness 输出目录\n";
+        return result;
+    }
+    const QString base = qPath(config.outputBaseName.empty()
+        ? std::string("UserMultiObjectHarness") : config.outputBaseName);
+    const QString sourcePath = QDir(workDir).filePath(base + QStringLiteral(".cpp"));
+    const QString dllPath = QDir(workDir).filePath(base + QStringLiteral(".dll"));
+
+    MultiObjectHarnessConfig compileConfig;
+    compileConfig.headerPaths = config.headerPaths;
+    compileConfig.includeDirs = config.includeDirs;
+    compileConfig.libPaths = config.libPaths;
+    compileConfig.linkLibs = config.linkLibs;
+    compileConfig.workDir = qToUtf8(QDir::toNativeSeparators(workDir));
+    auto makeAbsolute = [](std::vector<std::string>& paths) {
+        for (auto& path : paths) {
+            path = qToUtf8(QDir::toNativeSeparators(
+                QFileInfo(qPath(path)).absoluteFilePath()));
+        }
+    };
+    makeAbsolute(compileConfig.headerPaths);
+    makeAbsolute(compileConfig.includeDirs);
+    makeAbsolute(compileConfig.libPaths);
+    makeAbsolute(compileConfig.linkLibs);
+    m_searchDirs = compileConfig.libPaths;
+    for (const auto& lib : compileConfig.linkLibs) {
+        const QString directory = QFileInfo(qPath(lib)).absolutePath();
+        if (!directory.isEmpty()) m_searchDirs.push_back(qToUtf8(directory));
+    }
+
+    QFile sourceFile(sourcePath);
+    if (!sourceFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        result.log = "ERROR: 无法写入多对象 Harness 源文件\n";
+        return result;
+    }
+    sourceFile.write(QByteArray::fromStdString(GenerateUserPoolSource(config)));
+    sourceFile.close();
+    QFile::remove(dllPath);
+    result.sourcePath = qToUtf8(sourcePath);
+    if (!InvokeCl(compileConfig, result.sourcePath, qToUtf8(dllPath), result.log))
+        return result;
+    CopyDependencyDllsBesideHarness(m_searchDirs, workDir, dllPath, result.log);
+    std::string error;
+    if (!LoadCompiledDll(qToUtf8(dllPath), error)) {
+        result.log += error;
+        return result;
+    }
+    result.success = true;
+    result.dllPath = qToUtf8(dllPath);
+    result.log += "SUCCESS: 用户多对象 Harness 编译并加载成功\n";
+    return result;
+}
+
+std::string MultiObjectHarness::GenerateSource(const MultiObjectHarnessConfig& config) const {
+    std::ostringstream source;
+    source << "#ifndef NOMINMAX\n#define NOMINMAX\n#endif\n"
+           << "#include <windows.h>\n#include <algorithm>\n#include <chrono>\n"
+           << "#include <cmath>\n#include <numeric>\n#include <random>\n"
+           << "#include <string>\n#include <type_traits>\n#include <vector>\n";
+    for (const auto& header : config.headerPaths) {
+        source << "#include \"" << header << "\"\n";
+    }
+    source << "\nstruct RandomBag {\n";
+    for (const auto& variable : m_enabledVars) {
+        source << "    " << (variable.type == RandomVarType::Int ? "int " : "double ")
+               << variable.name << "{};\n";
+    }
+    source << "};\n\n" << config.adapterCode << "\n";
+    source << R"CPP(
+struct TrackPoint { double lat; double lon; };
+struct ObjectResult {
+    int baselineRc = 0;
+    int interleavedRc = 0;
+    int exception = 0;
+    unsigned long exceptionCode = 0;
+    int faultStep = -1;
+    double maxDeviation = 0.0;
+    std::string detail;
+    std::vector<TrackPoint> baseline;
+    std::vector<TrackPoint> interleaved;
+};
+static std::vector<ObjectResult> g_results;
+static double g_maxFrameMs = 0.0;
+
+static int SafeInitialize(ModelObjectAdapter* object, int objectId,
+                          const RandomBag* random, double dt, unsigned long* exceptionCode) {
+    __try {
+        *exceptionCode = 0;
+        return object->Initialize(objectId, *random, dt);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        *exceptionCode = GetExceptionCode();
+        return -32000;
+    }
+}
+static int SafeStep(ModelObjectAdapter* object, int step, double dt,
+                    double* lat, double* lon, unsigned long* exceptionCode) {
+    __try {
+        *exceptionCode = 0;
+        return object->Step(step, dt, *lat, *lon);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        *exceptionCode = GetExceptionCode();
+        return -32000;
+    }
+}
+static void SafeDestroy(ModelObjectAdapter* object, unsigned long* exceptionCode) {
+    __try {
+        *exceptionCode = 0;
+        object->Destroy();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        *exceptionCode = GetExceptionCode();
+    }
+}
+
+extern "C" __declspec(dllexport) int RunInterleavedMultiObjectTest(
+    const double* dvals, int nd, const int* ivals, int ni,
+    int objectCount, int stepCount, double dt, double tolerance,
+    int schedule, unsigned int randomSeed) {
+    if (objectCount < 1 || stepCount < 1 || dt <= 0.0) return -1;
+    (void)randomSeed;
+)CPP";
+    source << UserCodeHarness::BuildPerObjectRandomPreamble(m_enabledVars);
+    source << R"CPP(
+    g_results.assign(static_cast<size_t>(objectCount), ObjectResult{});
+    g_maxFrameMs = 0.0;
+
+    for (int objectId = 0; objectId < objectCount; ++objectId) {
+        ModelObjectAdapter* object = new ModelObjectAdapter();
+        unsigned long exceptionCode = 0;
+        int rc = SafeInitialize(object, objectId,
+                                &objectRandoms[static_cast<size_t>(objectId)], dt, &exceptionCode);
+        if (rc != 0) {
+            g_results[objectId].baselineRc = rc;
+            g_results[objectId].exceptionCode = exceptionCode;
+            g_results[objectId].exception = exceptionCode != 0;
+            g_results[objectId].detail = "基线初始化失败";
+        } else {
+            for (int step = 0; step < stepCount; ++step) {
+                double lat = 0.0, lon = 0.0;
+                rc = SafeStep(object, step, dt, &lat, &lon, &exceptionCode);
+                if (rc != 0 || exceptionCode != 0) {
+                    g_results[objectId].baselineRc = rc;
+                    g_results[objectId].exceptionCode = exceptionCode;
+                    g_results[objectId].exception = exceptionCode != 0;
+                    g_results[objectId].faultStep = step;
+                    g_results[objectId].detail = "基线步进失败";
+                    break;
+                }
+                g_results[objectId].baseline.push_back({lat, lon});
+            }
+        }
+        SafeDestroy(object, &exceptionCode);
+        delete object;
+    }
+
+    std::vector<ModelObjectAdapter*> objects(static_cast<size_t>(objectCount), nullptr);
+    for (int objectId = 0; objectId < objectCount; ++objectId) {
+        objects[objectId] = new ModelObjectAdapter();
+        unsigned long exceptionCode = 0;
+        int rc = SafeInitialize(objects[objectId], objectId,
+                                &objectRandoms[static_cast<size_t>(objectId)], dt, &exceptionCode);
+        if (rc != 0 || exceptionCode != 0) {
+            g_results[objectId].interleavedRc = rc;
+            g_results[objectId].exceptionCode = exceptionCode;
+            g_results[objectId].exception = exceptionCode != 0;
+            g_results[objectId].detail = "交错初始化失败";
+        }
+    }
+
+    std::vector<int> order(static_cast<size_t>(objectCount));
+    std::iota(order.begin(), order.end(), 0);
+    std::mt19937 random(randomSeed);
+    for (int step = 0; step < stepCount; ++step) {
+        if (schedule == 1) std::reverse(order.begin(), order.end());
+        else if (schedule == 2) std::shuffle(order.begin(), order.end(), random);
+        const auto frameStart = std::chrono::high_resolution_clock::now();
+        for (int objectId : order) {
+            ObjectResult& result = g_results[objectId];
+            if (result.interleavedRc != 0 || result.exception) continue;
+            double lat = 0.0, lon = 0.0;
+            unsigned long exceptionCode = 0;
+            const int rc = SafeStep(objects[objectId], step, dt, &lat, &lon, &exceptionCode);
+            if (rc != 0 || exceptionCode != 0) {
+                result.interleavedRc = rc;
+                result.exceptionCode = exceptionCode;
+                result.exception = exceptionCode != 0;
+                result.faultStep = step;
+                result.detail = "交错步进失败";
+                continue;
+            }
+            result.interleaved.push_back({lat, lon});
+        }
+        const auto frameEnd = std::chrono::high_resolution_clock::now();
+        const double frameMs = std::chrono::duration<double, std::milli>(frameEnd - frameStart).count();
+        if (frameMs > g_maxFrameMs) g_maxFrameMs = frameMs;
+        if (schedule == 1) std::reverse(order.begin(), order.end());
+    }
+
+    for (int objectId = 0; objectId < objectCount; ++objectId) {
+        unsigned long exceptionCode = 0;
+        SafeDestroy(objects[objectId], &exceptionCode);
+        if (exceptionCode != 0) {
+            g_results[objectId].exception = 1;
+            g_results[objectId].exceptionCode = exceptionCode;
+            g_results[objectId].detail = "销毁对象时发生异常";
+        }
+        delete objects[objectId];
+        const size_t count = (std::min)(g_results[objectId].baseline.size(),
+                                        g_results[objectId].interleaved.size());
+        for (size_t i = 0; i < count; ++i) {
+            const double dLat = g_results[objectId].baseline[i].lat
+                              - g_results[objectId].interleaved[i].lat;
+            const double dLon = g_results[objectId].baseline[i].lon
+                              - g_results[objectId].interleaved[i].lon;
+            const double deviation = std::sqrt(dLat * dLat + dLon * dLon);
+            if (deviation > g_results[objectId].maxDeviation)
+                g_results[objectId].maxDeviation = deviation;
+        }
+        if (g_results[objectId].detail.empty()) {
+            if (g_results[objectId].baseline.size() != g_results[objectId].interleaved.size())
+                g_results[objectId].detail = "基线与交错轨迹点数不一致";
+            else if (g_results[objectId].maxDeviation > tolerance)
+                g_results[objectId].detail = "交错运行结果偏离单独运行基线";
+            else
+                g_results[objectId].detail = "状态隔离正常";
+        }
+    }
+    return 0;
+}
+
+extern "C" __declspec(dllexport) int GetMultiObjectResult(
+    int index, int* baselineRc, int* interleavedRc, int* exception,
+    unsigned long* exceptionCode, int* faultStep, double* maxDeviation,
+    const char** detail, int* baselineCount, int* interleavedCount) {
+    if (index < 0 || index >= static_cast<int>(g_results.size())) return 0;
+    const ObjectResult& result = g_results[static_cast<size_t>(index)];
+    *baselineRc = result.baselineRc;
+    *interleavedRc = result.interleavedRc;
+    *exception = result.exception;
+    *exceptionCode = result.exceptionCode;
+    *faultStep = result.faultStep;
+    *maxDeviation = result.maxDeviation;
+    *detail = result.detail.c_str();
+    *baselineCount = static_cast<int>(result.baseline.size());
+    *interleavedCount = static_cast<int>(result.interleaved.size());
+    return 1;
+}
+extern "C" __declspec(dllexport) int GetMultiObjectTrackPoint(
+    int objectId, int baseline, int pointIndex, double* lat, double* lon) {
+    if (objectId < 0 || objectId >= static_cast<int>(g_results.size())) return 0;
+    const auto& points = baseline ? g_results[objectId].baseline : g_results[objectId].interleaved;
+    if (pointIndex < 0 || pointIndex >= static_cast<int>(points.size())) return 0;
+    *lat = points[pointIndex].lat;
+    *lon = points[pointIndex].lon;
+    return 1;
+}
+extern "C" __declspec(dllexport) double GetMultiObjectMaxFrameMs() {
+    return g_maxFrameMs;
+}
+)CPP";
+    return source.str();
+}
+
+bool MultiObjectHarness::InvokeCl(const MultiObjectHarnessConfig& config,
+                                  const std::string& sourcePath,
+                                  const std::string& outputDll,
+                                  std::string& log) const {
+    const std::string vcvars = UserCodeHarness::FindVcVars64Bat();
+    if (vcvars.empty()) {
+        log = "ERROR: 未找到 Visual Studio C++ 编译环境";
+        return false;
+    }
+    QString command = QStringLiteral("cl.exe /nologo /LD /EHa /std:c++14 /O2 /utf-8 /DNOMINMAX /Fe%1")
+        .arg(quoteArg(qPath(outputDll)));
+    for (const auto& include : config.includeDirs)
+        command += QStringLiteral(" /I%1").arg(quoteArg(qPath(include)));
+    for (const auto& header : config.headerPaths) {
+        const QString directory = QFileInfo(qPath(header)).absolutePath();
+        command += QStringLiteral(" /I%1").arg(quoteArg(directory));
+    }
+    command += QStringLiteral(" %1").arg(quoteArg(qPath(sourcePath)));
+    for (const auto& source : config.sourcePaths)
+        command += QStringLiteral(" %1").arg(quoteArg(qPath(source)));
+    command += QStringLiteral(" /link psapi.lib");
+    for (const auto& libPath : config.libPaths)
+        command += QStringLiteral(" /LIBPATH:%1").arg(quoteArg(qPath(libPath)));
+    for (const auto& lib : config.linkLibs)
+        command += QStringLiteral(" %1").arg(quoteArg(qPath(lib)));
+
+    const QString batchPath = QDir(qPath(config.workDir)).filePath(
+        QStringLiteral("build_multiobject_harness.bat"));
+    QFile batchFile(batchPath);
+    if (!batchFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        log += "ERROR: 无法写入多对象编译脚本\n";
+        return false;
+    }
+    batchFile.write("@echo off\r\ncall \"");
+    batchFile.write(QByteArray::fromStdString(vcvars));
+    batchFile.write("\" >nul\r\nif errorlevel 1 exit /b %errorlevel%\r\n");
+    batchFile.write(command.toLocal8Bit());
+    batchFile.write("\r\n");
+    batchFile.close();
+
+    QProcess process;
+    process.setWorkingDirectory(qPath(config.workDir));
+    process.start(QStringLiteral("cmd.exe"),
+                  { QStringLiteral("/D"), QStringLiteral("/C"), batchPath });
+    if (!process.waitForStarted(10000) || !process.waitForFinished(120000)) {
+        process.kill();
+        log += "ERROR: 多对象 Harness 编译超时或无法启动\n";
+        return false;
+    }
+    // 编译器输出可能是系统 ANSI（中文系统为 GBK），也可能是 UTF-8；
+    // 直接按 fromLocal8Bit 解会在 UTF-8 输出时出错，统一走 qDecodeLog 判别。
+    log += qToUtf8(qDecodeLog(process.readAllStandardOutput().toStdString()));
+    log += qToUtf8(qDecodeLog(process.readAllStandardError().toStdString()));
+    return process.exitCode() == 0 && QFileInfo::exists(qPath(outputDll));
+}
+
+CompileResult MultiObjectHarness::Compile(const MultiObjectHarnessConfig& config) {
+    CompileResult result;
+    Unload();
+    if (config.adapterCode.find("class ModelObjectAdapter") == std::string::npos) {
+        result.log = "ERROR: 适配代码必须定义 class ModelObjectAdapter\n";
+        return result;
+    }
+    m_enabledVars.clear();
+    for (const auto& variable : config.randomVars)
+        if (variable.enabled && !variable.name.empty()) m_enabledVars.push_back(variable);
+    const QString workDir = QDir(qPath(config.workDir)).absolutePath();
+    if (!QDir().mkpath(workDir)) {
+        result.log = "ERROR: 无法创建多对象 Harness 输出目录\n";
+        return result;
+    }
+    const QString base = qPath(config.outputBaseName.empty()
+        ? std::string("MultiObjectHarness") : config.outputBaseName);
+    const QString sourcePath = QDir(workDir).filePath(base + QStringLiteral(".cpp"));
+    const QString dllPath = QDir(workDir).filePath(base + QStringLiteral(".dll"));
+    MultiObjectHarnessConfig actual = config;
+    auto makeAbsolute = [](std::vector<std::string>& paths) {
+        for (auto& path : paths) {
+            path = qToUtf8(QDir::toNativeSeparators(
+                QFileInfo(qPath(path)).absoluteFilePath()));
+        }
+    };
+    makeAbsolute(actual.headerPaths);
+    makeAbsolute(actual.sourcePaths);
+    makeAbsolute(actual.includeDirs);
+    makeAbsolute(actual.libPaths);
+    makeAbsolute(actual.linkLibs);
+    actual.workDir = qToUtf8(QDir::toNativeSeparators(workDir));
+    m_searchDirs = actual.libPaths;
+    for (const auto& lib : actual.linkLibs) {
+        const QString directory = QFileInfo(qPath(lib)).absolutePath();
+        if (!directory.isEmpty()) m_searchDirs.push_back(qToUtf8(directory));
+    }
+
+    QFile sourceFile(sourcePath);
+    if (!sourceFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        result.log = "ERROR: 无法写入多对象 Harness 源文件\n";
+        return result;
+    }
+    sourceFile.write(QByteArray::fromStdString(GenerateSource(actual)));
+    sourceFile.close();
+    QFile::remove(dllPath);
+    result.sourcePath = qToUtf8(sourcePath);
+    if (!InvokeCl(actual, result.sourcePath, qToUtf8(dllPath), result.log)) return result;
+    CopyDependencyDllsBesideHarness(m_searchDirs, workDir, dllPath, result.log);
+    std::string error;
+    if (!LoadCompiledDll(qToUtf8(dllPath), error)) {
+        result.log += error;
+        return result;
+    }
+    result.success = true;
+    result.dllPath = qToUtf8(dllPath);
+    result.log += "SUCCESS: 多对象 Harness 编译并加载成功\n";
+    return result;
+}
+
+bool MultiObjectHarness::LoadModelDll(
+    const std::string& dllPath,
+    const std::vector<RandomVarDef>& randomVars,
+    std::string& error) {
+    Unload();
+    const QString absolutePath = QFileInfo(qPath(dllPath)).absoluteFilePath();
+    if (!QFileInfo::exists(absolutePath)) {
+        error = "DLL 文件不存在: " + dllPath;
+        return false;
+    }
+    m_enabledVars.clear();
+    for (const auto& variable : randomVars)
+        if (variable.enabled && !variable.name.empty()) m_enabledVars.push_back(variable);
+
+    const std::string directory = qToUtf8(
+        QDir::toNativeSeparators(QFileInfo(absolutePath).absolutePath()));
+    SetDllDirectoryA(directory.c_str());
+    const std::string utf8Path = qToUtf8(QDir::toNativeSeparators(absolutePath));
+    // 加载私有副本且从不卸载：既保证每次都是全新的模块状态，又不会执行被测模块的 DETACH。
+    std::string loadError;
+    m_hModule = LoadPrivateModuleCopy(utf8Path, std::string(), nullptr, &loadError);
+    if (!m_hModule) {
+        error = "无法加载第三方模型 DLL：" + loadError;
+        SetDllDirectoryA(nullptr);
+        return false;
+    }
+    m_pfnCreate = reinterpret_cast<FnModelCreate>(
+        GetProcAddress(m_hModule, "Model_Create"));
+    m_pfnInitEx = reinterpret_cast<FnModelInitEx>(
+        GetProcAddress(m_hModule, "Model_Init"));
+    m_pfnStepEx = reinterpret_cast<FnModelStepEx>(
+        GetProcAddress(m_hModule, "Model_Step"));
+    m_pfnDestroyEx = reinterpret_cast<FnModelDestroyEx>(
+        GetProcAddress(m_hModule, "Model_Destroy"));
+    if (!m_pfnCreate || !m_pfnInitEx || !m_pfnStepEx || !m_pfnDestroyEx) {
+        error = "该 DLL 不是可自动测试的 Handle 型接口：需要导出 "
+                "Model_Create / Model_Init / Model_Step / Model_Destroy";
+        Unload();
+        return false;
+    }
+    m_directModelMode = true;
+    m_dllPath = utf8Path;
+    return true;
+}
+
+bool MultiObjectHarness::LoadCompiledDll(const std::string& path, std::string& error) {
+    Unload();
+    SetDllDirectoryPreferringModels(m_searchDirs);
+    // 加载私有副本且从不卸载：既保证每次都是全新的模块状态，又不会执行被测模块的 DETACH。
+    std::string loadError;
+    m_hModule = LoadPrivateModuleCopy(path, std::string(), nullptr, &loadError);
+    if (!m_hModule) {
+        error = "ERROR: 无法加载多对象 Harness DLL：" + loadError
+              + "（请确认 models/ 下的第三方 .dll 可被找到，或已复制到 Harness 输出目录）\n";
+        return false;
+    }
+    m_pfnRun = reinterpret_cast<FnRunMultiObject>(
+        GetProcAddress(m_hModule, "RunInterleavedMultiObjectTest"));
+    m_pfnGetResult = reinterpret_cast<FnGetObjectResult>(
+        GetProcAddress(m_hModule, "GetMultiObjectResult"));
+    m_pfnGetTrackPoint = reinterpret_cast<FnGetTrackPoint>(
+        GetProcAddress(m_hModule, "GetMultiObjectTrackPoint"));
+    m_pfnGetMaxFrameMs = reinterpret_cast<FnGetMetric>(
+        GetProcAddress(m_hModule, "GetMultiObjectMaxFrameMs"));
+    if (!m_pfnRun || !m_pfnGetResult || !m_pfnGetTrackPoint || !m_pfnGetMaxFrameMs) {
+        error = "ERROR: 多对象 Harness 缺少必需导出接口\n";
+        Unload();
+        return false;
+    }
+    m_pfnMoPoolPrepare = reinterpret_cast<FnMoPoolPrepare>(
+        GetProcAddress(m_hModule, "MoPool_Prepare"));
+    m_pfnMoPoolCreate = reinterpret_cast<FnMoPoolCreate>(
+        GetProcAddress(m_hModule, "MoPool_Create"));
+    m_pfnMoPoolInit = reinterpret_cast<FnMoPoolInit>(
+        GetProcAddress(m_hModule, "MoPool_Init"));
+    m_pfnMoPoolStep = reinterpret_cast<FnMoPoolStep>(
+        GetProcAddress(m_hModule, "MoPool_Step"));
+    m_pfnMoPoolDestroy = reinterpret_cast<FnMoPoolDestroy>(
+        GetProcAddress(m_hModule, "MoPool_Destroy"));
+    m_dllPath = path;
+    m_directModelMode = false;
+    return true;
+}
+
+void MultiObjectHarness::Unload() {
+    // 不调用 FreeLibrary：被测模块的 DETACH 可能死循环并永久占用装载锁（详见 LoadPrivateModuleCopy 注释）。
+    m_hModule = NULL;
+    m_pfnRun = nullptr;
+    m_pfnGetResult = nullptr;
+    m_pfnGetTrackPoint = nullptr;
+    m_pfnGetMaxFrameMs = nullptr;
+    m_pfnMoPoolPrepare = nullptr;
+    m_pfnMoPoolCreate = nullptr;
+    m_pfnMoPoolInit = nullptr;
+    m_pfnMoPoolStep = nullptr;
+    m_pfnMoPoolDestroy = nullptr;
+    m_pfnCreate = nullptr;
+    m_pfnInitEx = nullptr;
+    m_pfnStepEx = nullptr;
+    m_pfnDestroyEx = nullptr;
+    m_directModelMode = false;
+    m_dllPath.clear();
+    SetDllDirectoryA(nullptr);
+}
+
+void MultiObjectHarness::SetEnabledRandomVars(const std::vector<RandomVarDef>& vars) {
+    m_enabledVars.clear();
+    for (const auto& variable : vars)
+        if (variable.enabled && !variable.name.empty())
+            m_enabledVars.push_back(variable);
+}
+
+RandomValueBlob MultiObjectHarness::Sample(uint32_t seed, int objectCount) const {
+    RandomValueBlob blob;
+    if (objectCount < 1) objectCount = 1;
+    blob.objectCount = objectCount;
+    std::mt19937 random(seed);
+    std::ostringstream summary;
+    for (int objectId = 0; objectId < objectCount; ++objectId) {
+        if (objectCount > 1)
+            summary << "obj" << objectId << ":{";
+        for (const auto& variable : m_enabledVars) {
+            if (variable.type == RandomVarType::Int) {
+                int low = static_cast<int>(std::floor(variable.minValue));
+                int high = static_cast<int>(std::floor(variable.maxValue));
+                if (high < low) std::swap(low, high);
+                const int value = std::uniform_int_distribution<int>(low, high)(random);
+                blob.ints.push_back(value);
+                summary << variable.name << "=" << value << " ";
+            } else {
+                double low = variable.minValue, high = variable.maxValue;
+                if (high < low) std::swap(low, high);
+                const double value = std::uniform_real_distribution<double>(low, high)(random);
+                blob.doubles.push_back(value);
+                summary << variable.name << "=" << value << " ";
+            }
+        }
+        if (objectCount > 1)
+            summary << "} ";
+    }
+    blob.summary = summary.str();
+    return blob;
+}
+
+bool MultiObjectHarness::RunDirectModel(
+    const MultiObjectTestConfig& config,
+    const RandomValueBlob& values,
+    MultiObjectTestReport& report,
+    std::string& error) const {
+    report = MultiObjectTestReport();
+    report.objectCount = config.objectCount;
+    report.stepCount = config.stepCount;
+    report.tolerance = config.tolerance;
+    report.usedSingleThread = true;
+    report.objectResults.resize(static_cast<size_t>(config.objectCount));
+    for (int i = 0; i < config.objectCount; ++i)
+        report.objectResults[static_cast<size_t>(i)].objectId = i;
+
+    auto parametersFor = [&](int objectId) {
+        WeaponModelParams parameters{};
+        parameters.init_lat = 30.0;
+        parameters.init_lon = 110.0;
+        parameters.init_alt = 3000.0;
+        parameters.init_speed = 500.0;
+        parameters.init_heading = 35.0 + objectId * 7.0;
+        parameters.init_pitch = 12.0;
+        parameters.init_roll = 0.0;
+        parameters.step_dt = config.stepDt;
+        int doubleVarsPerObject = 0;
+        int intVarsPerObject = 0;
+        for (const auto& variable : m_enabledVars) {
+            if (variable.type == RandomVarType::Int) ++intVarsPerObject;
+            else ++doubleVarsPerObject;
+        }
+        size_t doubleIndex = 0, intIndex = 0;
+        for (const auto& variable : m_enabledVars) {
+            double value = 0.0;
+            if (variable.type == RandomVarType::Int) {
+                const size_t idx = static_cast<size_t>(objectId) * intVarsPerObject + intIndex;
+                if (idx < values.ints.size()) value = values.ints[idx];
+                ++intIndex;
+            } else {
+                const size_t idx = static_cast<size_t>(objectId) * doubleVarsPerObject + doubleIndex;
+                if (idx < values.doubles.size()) value = values.doubles[idx];
+                ++doubleIndex;
+            }
+            if (variable.name == "lat") parameters.init_lat = value;
+            else if (variable.name == "lon") parameters.init_lon = value;
+            else if (variable.name == "alt") parameters.init_alt = value;
+            else if (variable.name == "speed") parameters.init_speed = value;
+            else if (variable.name == "heading") parameters.init_heading = value;
+            else if (variable.name == "pitch") parameters.init_pitch = value;
+            else if (variable.name == "roll") parameters.init_roll = value;
+        }
+        return parameters;
+    };
+    auto recordFailure = [](MultiObjectResult& result, int returnCode,
+                            DWORD exceptionCode, int step, bool baseline,
+                            const char* phase) {
+        if (baseline) result.baselineReturnCode = returnCode;
+        else result.interleavedReturnCode = returnCode;
+        result.exceptionOccurred = exceptionCode != 0;
+        result.exceptionCode = exceptionCode;
+        result.faultStep = step;
+        result.detail = phase;
+    };
+
+    const ProcessMemoryStats before = MemoryUtils::GetCurrentProcessMemory();
+    for (int objectId = 0; objectId < config.objectCount; ++objectId) {
+        MultiObjectResult& result = report.objectResults[static_cast<size_t>(objectId)];
+        ModelHandle handle = nullptr;
+        DWORD exceptionCode = 0;
+        if (!SafeCallCreate(m_pfnCreate, &handle, &exceptionCode) || !handle) {
+            recordFailure(result, -1, exceptionCode, -1, true, "基线创建对象失败");
+            continue;
+        }
+        WeaponModelParams parameters = parametersFor(objectId);
+        int returnCode = 0;
+        if (!SafeCallInitEx(m_pfnInitEx, handle, &parameters,
+                            &returnCode, &exceptionCode)
+            || returnCode != 0) {
+            recordFailure(result, returnCode, exceptionCode, -1, true, "基线初始化失败");
+        } else {
+            for (int step = 0; step < config.stepCount; ++step) {
+                WeaponModelOutput output{};
+                if (!SafeCallStepEx(m_pfnStepEx, handle, &output,
+                                    &returnCode, &exceptionCode)
+                    || returnCode != 0) {
+                    recordFailure(result, returnCode, exceptionCode, step,
+                                  true, "基线步进失败");
+                    break;
+                }
+                result.baselineTrajectory.push_back({ output.lat, output.lon });
+            }
+        }
+        DWORD destroyException = 0;
+        if (!SafeCallDestroyEx(m_pfnDestroyEx, handle, &destroyException)
+            && !result.exceptionOccurred) {
+            recordFailure(result, result.baselineReturnCode, destroyException,
+                          -1, true, "基线销毁对象失败");
+        }
+    }
+
+    std::vector<ModelHandle> handles(static_cast<size_t>(config.objectCount), nullptr);
+    for (int objectId = 0; objectId < config.objectCount; ++objectId) {
+        MultiObjectResult& result = report.objectResults[static_cast<size_t>(objectId)];
+        DWORD exceptionCode = 0;
+        if (!SafeCallCreate(m_pfnCreate, &handles[static_cast<size_t>(objectId)],
+                            &exceptionCode)
+            || !handles[static_cast<size_t>(objectId)]) {
+            recordFailure(result, -1, exceptionCode, -1, false, "交错创建对象失败");
+            continue;
+        }
+        WeaponModelParams parameters = parametersFor(objectId);
+        int returnCode = 0;
+        if (!SafeCallInitEx(m_pfnInitEx, handles[static_cast<size_t>(objectId)],
+                            &parameters, &returnCode, &exceptionCode)
+            || returnCode != 0) {
+            recordFailure(result, returnCode, exceptionCode, -1,
+                          false, "交错初始化失败");
+        }
+    }
+
+    std::vector<int> order(static_cast<size_t>(config.objectCount));
+    std::iota(order.begin(), order.end(), 0);
+    if (config.schedule == MultiObjectSchedule::Reverse)
+        std::reverse(order.begin(), order.end());
+    std::mt19937 random(config.randomSeed);
+    for (int step = 0; step < config.stepCount; ++step) {
+        if (config.schedule == MultiObjectSchedule::DeterministicRandom)
+            std::shuffle(order.begin(), order.end(), random);
+        const auto frameStart = std::chrono::high_resolution_clock::now();
+        for (int objectId : order) {
+            MultiObjectResult& result =
+                report.objectResults[static_cast<size_t>(objectId)];
+            ModelHandle handle = handles[static_cast<size_t>(objectId)];
+            if (!handle || result.interleavedReturnCode != 0
+                || result.exceptionOccurred) continue;
+            WeaponModelOutput output{};
+            int returnCode = 0;
+            DWORD exceptionCode = 0;
+            if (!SafeCallStepEx(m_pfnStepEx, handle, &output,
+                                &returnCode, &exceptionCode)
+                || returnCode != 0) {
+                recordFailure(result, returnCode, exceptionCode, step,
+                              false, "交错步进失败");
+                continue;
+            }
+            result.interleavedTrajectory.push_back({ output.lat, output.lon });
+        }
+        const auto frameEnd = std::chrono::high_resolution_clock::now();
+        report.maxFrameTimeMs = (std::max)(
+            report.maxFrameTimeMs,
+            std::chrono::duration<double, std::milli>(
+                frameEnd - frameStart).count());
+    }
+    for (int objectId = 0; objectId < config.objectCount; ++objectId) {
+        ModelHandle handle = handles[static_cast<size_t>(objectId)];
+        if (!handle) continue;
+        DWORD exceptionCode = 0;
+        if (!SafeCallDestroyEx(m_pfnDestroyEx, handle, &exceptionCode)) {
+            MultiObjectResult& result =
+                report.objectResults[static_cast<size_t>(objectId)];
+            recordFailure(result, result.interleavedReturnCode, exceptionCode,
+                          -1, false, "交错销毁对象失败");
+        }
+    }
+
+    for (auto& result : report.objectResults) {
+        const size_t count = (std::min)(result.baselineTrajectory.size(),
+                                        result.interleavedTrajectory.size());
+        for (size_t i = 0; i < count; ++i) {
+            const double dLat = result.baselineTrajectory[i].lat
+                              - result.interleavedTrajectory[i].lat;
+            const double dLon = result.baselineTrajectory[i].lon
+                              - result.interleavedTrajectory[i].lon;
+            result.maxPositionDeviation = (std::max)(
+                result.maxPositionDeviation,
+                std::sqrt(dLat * dLat + dLon * dLon));
+        }
+        if (result.detail.empty()) {
+            if (result.baselineTrajectory.size() != result.interleavedTrajectory.size())
+                result.detail = "基线与交错轨迹点数不一致";
+            else if (result.maxPositionDeviation > config.tolerance)
+                result.detail = "交错结果偏离基线，疑似状态串扰";
+            else
+                result.detail = "状态隔离正常";
+        }
+    }
+    const ProcessMemoryStats after = MemoryUtils::GetCurrentProcessMemory();
+    report.memoryDeltaMB = MemoryUtils::BytesToMB(after.workingSetBytes)
+                         - MemoryUtils::BytesToMB(before.workingSetBytes);
+    error.clear();
+    return true;
+}
+
+bool MultiObjectHarness::Run(const MultiObjectTestConfig& config,
+                             const RandomValueBlob& values,
+                             MultiObjectTestReport& report,
+                             std::string& error) const {
+    if (!IsLoaded()) {
+        error = "多对象 Harness 尚未编译或加载";
+        return false;
+    }
+    if (m_directModelMode) {
+        return RunDirectModel(config, values, report, error);
+    }
+    const ProcessMemoryStats before = MemoryUtils::GetCurrentProcessMemory();
+    DWORD exceptionCode = 0;
+    const int returnCode = safeRun(
+        reinterpret_cast<RunRaw>(m_pfnRun),
+        values.doubles.empty() ? nullptr : values.doubles.data(),
+        static_cast<int>(values.doubles.size()),
+        values.ints.empty() ? nullptr : values.ints.data(),
+        static_cast<int>(values.ints.size()), config, &exceptionCode);
+    const ProcessMemoryStats after = MemoryUtils::GetCurrentProcessMemory();
+    if (exceptionCode != 0 || returnCode != 0) {
+        std::ostringstream stream;
+        stream << "多对象 Harness 执行失败，返回码=" << returnCode
+               << "，SEH=0x" << std::hex << exceptionCode;
+        error = stream.str();
+        return false;
+    }
+
+    report = MultiObjectTestReport();
+    report.objectCount = config.objectCount;
+    report.stepCount = config.stepCount;
+    report.tolerance = config.tolerance;
+    report.maxFrameTimeMs = safeGetMetric(
+        reinterpret_cast<GetMetricRaw>(m_pfnGetMaxFrameMs));
+    report.memoryDeltaMB = MemoryUtils::BytesToMB(after.workingSetBytes)
+                         - MemoryUtils::BytesToMB(before.workingSetBytes);
+    for (int objectId = 0; objectId < config.objectCount; ++objectId) {
+        MultiObjectResult result;
+        result.objectId = objectId;
+        int exception = 0, baselineCount = 0, interleavedCount = 0;
+        const char* detail = nullptr;
+        if (!safeGetResult(
+                reinterpret_cast<GetResultRaw>(m_pfnGetResult), objectId,
+                &result.baselineReturnCode, &result.interleavedReturnCode,
+                &exception, &result.exceptionCode, &result.faultStep,
+                &result.maxPositionDeviation, &detail,
+                &baselineCount, &interleavedCount)) continue;
+        result.exceptionOccurred = exception != 0;
+        result.detail = detail ? detail : "";
+        for (int i = 0; i < baselineCount; ++i) {
+            TrajectorySample sample;
+            if (safeGetTrack(reinterpret_cast<GetTrackRaw>(m_pfnGetTrackPoint),
+                             objectId, 1, i, &sample.lat, &sample.lon))
+                result.baselineTrajectory.push_back(sample);
+        }
+        for (int i = 0; i < interleavedCount; ++i) {
+            TrajectorySample sample;
+            if (safeGetTrack(reinterpret_cast<GetTrackRaw>(m_pfnGetTrackPoint),
+                             objectId, 0, i, &sample.lat, &sample.lon))
+                result.interleavedTrajectory.push_back(sample);
+        }
+        report.objectResults.push_back(result);
+    }
+    return true;
+}
+bool MultiObjectHarness::SupportsObjectSession() const {
+    if (!IsLoaded()) return false;
+    if (m_directModelMode)
+        return m_pfnCreate && m_pfnInitEx && m_pfnStepEx && m_pfnDestroyEx;
+    return m_pfnMoPoolPrepare && m_pfnMoPoolCreate && m_pfnMoPoolInit
+        && m_pfnMoPoolStep && m_pfnMoPoolDestroy;
+}
+
+WeaponModelParams MultiObjectHarness::BuildDirectParams(int objectId) const {
+    WeaponModelParams parameters{};
+    parameters.init_lat = 30.0;
+    parameters.init_lon = 110.0;
+    parameters.init_alt = 3000.0;
+    parameters.init_speed = 500.0;
+    parameters.init_heading = 35.0 + objectId * 7.0;
+    parameters.init_pitch = 12.0;
+    parameters.init_roll = 0.0;
+    parameters.step_dt = m_sessionDt;
+    int doubleVarsPerObject = 0;
+    int intVarsPerObject = 0;
+    for (const auto& variable : m_enabledVars) {
+        if (variable.type == RandomVarType::Int) ++intVarsPerObject;
+        else ++doubleVarsPerObject;
+    }
+    size_t doubleIndex = 0, intIndex = 0;
+    for (const auto& variable : m_enabledVars) {
+        double value = 0.0;
+        if (variable.type == RandomVarType::Int) {
+            const size_t idx = static_cast<size_t>(objectId) * intVarsPerObject + intIndex;
+            if (idx < m_sessionValues.ints.size()) value = m_sessionValues.ints[idx];
+            ++intIndex;
+        } else {
+            const size_t idx = static_cast<size_t>(objectId) * doubleVarsPerObject + doubleIndex;
+            if (idx < m_sessionValues.doubles.size()) value = m_sessionValues.doubles[idx];
+            ++doubleIndex;
+        }
+        if (variable.name == "lat") parameters.init_lat = value;
+        else if (variable.name == "lon") parameters.init_lon = value;
+        else if (variable.name == "alt") parameters.init_alt = value;
+        else if (variable.name == "speed") parameters.init_speed = value;
+        else if (variable.name == "heading") parameters.init_heading = value;
+        else if (variable.name == "pitch") parameters.init_pitch = value;
+        else if (variable.name == "roll") parameters.init_roll = value;
+    }
+    return parameters;
+}
+
+bool MultiObjectHarness::PrepareObjectSession(const RandomValueBlob& values,
+                                              int objectCount, double dt,
+                                              std::string& error) {
+    if (!SupportsObjectSession()) {
+        error = m_directModelMode
+            ? "多对象 Harness 未加载"
+            : "当前多对象 Harness 不支持对象级调度，请重新编译多对象 Harness（需 MoPool_* 导出）";
+        return false;
+    }
+    if (objectCount < 1 || dt <= 0.0) {
+        error = "对象数与 dt 必须大于 0";
+        return false;
+    }
+    m_sessionValues = values;
+    m_sessionObjectCount = objectCount;
+    m_sessionDt = dt;
+    if (m_directModelMode) {
+        error.clear();
+        return true;
+    }
+    const int rc = m_pfnMoPoolPrepare(
+        values.doubles.empty() ? nullptr : values.doubles.data(),
+        static_cast<int>(values.doubles.size()),
+        values.ints.empty() ? nullptr : values.ints.data(),
+        static_cast<int>(values.ints.size()),
+        objectCount, dt);
+    if (rc != 0) {
+        error = "MoPool_Prepare 失败，返回码=" + std::to_string(rc);
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+void* MultiObjectHarness::CreateLiveObject(int objectId, unsigned long* exceptionCode) const {
+    if (exceptionCode) *exceptionCode = 0;
+    if (objectId < 0 || objectId >= m_sessionObjectCount) return nullptr;
+    if (m_directModelMode) {
+        ModelHandle handle = nullptr;
+        DWORD seh = 0;
+        if (!SafeCallCreate(m_pfnCreate, &handle, &seh) || !handle) {
+            if (exceptionCode) *exceptionCode = seh;
+            return nullptr;
+        }
+        return handle;
+    }
+    return m_pfnMoPoolCreate(objectId);
+}
+
+int MultiObjectHarness::InitLiveObject(void* object, int objectId,
+                                       unsigned long* exceptionCode) const {
+    if (exceptionCode) *exceptionCode = 0;
+    if (!object) return -1;
+    if (m_directModelMode) {
+        WeaponModelParams parameters = BuildDirectParams(objectId);
+        int returnCode = 0;
+        DWORD seh = 0;
+        if (!SafeCallInitEx(m_pfnInitEx, object, &parameters, &returnCode, &seh)) {
+            if (exceptionCode) *exceptionCode = seh;
+            return -32000;
+        }
+        if (exceptionCode) *exceptionCode = seh;
+        return returnCode;
+    }
+    unsigned long seh = 0;
+    const int rc = m_pfnMoPoolInit(object, objectId, &seh);
+    if (exceptionCode) *exceptionCode = seh;
+    return rc;
+}
+
+int MultiObjectHarness::StepLiveObject(void* object, int objectId, int stepIndex,
+                                       double* outLat, double* outLon,
+                                       unsigned long* exceptionCode) const {
+    if (exceptionCode) *exceptionCode = 0;
+    if (!object || !outLat || !outLon) return -1;
+    if (m_directModelMode) {
+        WeaponModelOutput output{};
+        int returnCode = 0;
+        DWORD seh = 0;
+        if (!SafeCallStepEx(m_pfnStepEx, object, &output, &returnCode, &seh)) {
+            if (exceptionCode) *exceptionCode = seh;
+            return -32000;
+        }
+        *outLat = output.lat;
+        *outLon = output.lon;
+        if (exceptionCode) *exceptionCode = seh;
+        return returnCode;
+    }
+    unsigned long seh = 0;
+    const int rc = m_pfnMoPoolStep(object, objectId, stepIndex, outLat, outLon, &seh);
+    if (exceptionCode) *exceptionCode = seh;
+    return rc;
+}
+
+void MultiObjectHarness::DestroyLiveObject(void* object, int objectId,
+                                           unsigned long* exceptionCode) const {
+    if (exceptionCode) *exceptionCode = 0;
+    if (!object) return;
+    if (m_directModelMode) {
+        DWORD seh = 0;
+        SafeCallDestroyEx(m_pfnDestroyEx, object, &seh);
+        if (exceptionCode) *exceptionCode = seh;
+        return;
+    }
+    unsigned long seh = 0;
+    m_pfnMoPoolDestroy(object, objectId, &seh);
+    if (exceptionCode) *exceptionCode = seh;
+}

@@ -12,15 +12,37 @@ if(MSVC)
     add_compile_options(/W3)
 endif()
 
-# Qt 5.11 Path Configuration
-set(Qt5_DIR "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64/lib/cmake/Qt5" CACHE PATH "Qt5 Directory")
-set(CMAKE_PREFIX_PATH "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64" ${CMAKE_PREFIX_PATH})
+# Qt path: prefer local Qt 5.14.2 (msvc2017_64), fall back to legacy Qt 5.11 path
+if(DEFINED ENV{QTDIR} AND EXISTS "$ENV{QTDIR}/lib/cmake/Qt5")
+    set(_QT_ROOT "$ENV{QTDIR}")
+elseif(EXISTS "D:/Qt/5.14.2/msvc2017_64/lib/cmake/Qt5")
+    set(_QT_ROOT "D:/Qt/5.14.2/msvc2017_64")
+elseif(EXISTS "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64/lib/cmake/Qt5")
+    set(_QT_ROOT "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64")
+else()
+    set(_QT_ROOT "")
+endif()
+
+if(_QT_ROOT)
+    set(Qt5_DIR "${_QT_ROOT}/lib/cmake/Qt5" CACHE PATH "Qt5 Directory" FORCE)
+    list(INSERT CMAKE_PREFIX_PATH 0 "${_QT_ROOT}")
+    message(STATUS "Using Qt at: ${_QT_ROOT}")
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt5 COMPONENTS Widgets Charts REQUIRED)
+find_package(Qt5 COMPONENTS
+    Widgets
+    Charts
+    PrintSupport
+    Qml
+    Quick
+    QuickControls2
+    QuickWidgets
+    REQUIRED
+)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -49,16 +71,30 @@ set(SOURCES
     src/core/PerfProfiler.cpp
     src/core/FunctionalVerifier.h
     src/core/FunctionalVerifier.cpp
+    src/core/ConcurrencyTester.h
+    src/core/ConcurrencyTester.cpp
+    src/core/UserCodeHarness.h
+    src/core/UserCodeHarness.cpp
+    src/core/MultiObjectHarness.h
+    src/core/MultiObjectHarness.cpp
+    src/core/InterfaceMappingProfile.h
+    src/core/InterfaceMappingProfile.cpp
+    src/core/SingleThreadMultiObjectTester.h
+    src/core/SingleThreadMultiObjectTester.cpp
+    src/core/FleetSingleThreadMultiObjectTester.h
+    src/core/FleetSingleThreadMultiObjectTester.cpp
+    src/core/SessionStore.h
+    src/core/SessionStore.cpp
     src/core/ReportGenerator.h
     src/core/ReportGenerator.cpp
-    src/ui/LogConsoleWidget.h
-    src/ui/LogConsoleWidget.cpp
-    src/ui/PropertyEditorWidget.h
-    src/ui/PropertyEditorWidget.cpp
-    src/ui/ChartViewerWidget.h
-    src/ui/ChartViewerWidget.cpp
-    src/ui/MainWindow.h
-    src/ui/MainWindow.cpp
+    src/core/PrecheckSummary.h
+    src/core/PrecheckSummary.cpp
+    src/ui/CppSyntaxHighlighter.h
+    src/ui/CppSyntaxHighlighter.cpp
+    src/qml/QmlAppController.h
+    src/qml/QmlAppController.cpp
+    src/qml/QmlPrecheckRunner.h
+    src/qml/QmlPrecheckRunner.cpp
     src/resources.qrc
 )
 
@@ -67,12 +103,64 @@ add_executable(ModelValidator WIN32 ${SOURCES})
 target_link_libraries(ModelValidator PRIVATE
     Qt5::Widgets
     Qt5::Charts
+    Qt5::Qml
+    Qt5::Quick
+    Qt5::QuickControls2
     psapi.lib
 )
 
-# Add sample DLL targets for test verification
-add_subdirectory(sample_models/StandardWeapon)
-add_subdirectory(sample_models/FaultyWeapon)
+# Add sample DLL targets for test verification (only if present)
+if(EXISTS "${CMAKE_SOURCE_DIR}/sample_models/CompatibleWeaponF/CMakeLists.txt")
+    add_subdirectory(sample_models/CompatibleWeaponF)
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/sample_models/CompatibleWeaponG/CMakeLists.txt")
+    add_subdirectory(sample_models/CompatibleWeaponG)
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/sample_models/testcase_kit/CMakeLists.txt")
+    add_subdirectory(sample_models/testcase_kit)
+endif()
+
+# Explicit smoke target for the generated multi-object adapter DLL and scheduler.
+add_executable(MultiObjectHarnessSmoke EXCLUDE_FROM_ALL
+    tests/MultiObjectHarnessSmoke.cpp
+    src/core/MultiObjectHarness.cpp
+    src/core/InterfaceMappingProfile.cpp
+    src/core/PeAnalyzer.cpp
+    src/core/SingleThreadMultiObjectTester.cpp
+    src/core/UserCodeHarness.cpp
+    src/utils/MemoryUtils.cpp
+    src/utils/SehHelper.cpp
+)
+target_compile_definitions(MultiObjectHarnessSmoke PRIVATE NOMINMAX)
+target_link_libraries(MultiObjectHarnessSmoke PRIVATE Qt5::Core psapi.lib)
+
+# Static precheck path smoke (PackageScanner + Header/Lib/PE) — no LoadLibrary.
+add_executable(StaticPrecheckSmoke EXCLUDE_FROM_ALL
+    tests/StaticPrecheckSmoke.cpp
+    src/core/PackageScanner.cpp
+    src/core/HeaderAnalyzer.cpp
+    src/core/LibAnalyzer.cpp
+    src/core/PeAnalyzer.cpp
+    src/core/DllLoader.cpp
+    src/utils/MemoryUtils.cpp
+    src/utils/SehHelper.cpp
+)
+target_compile_definitions(StaticPrecheckSmoke PRIVATE NOMINMAX)
+target_link_libraries(StaticPrecheckSmoke PRIVATE Qt5::Core psapi.lib)
+
+add_executable(SampleModelsMatrix EXCLUDE_FROM_ALL
+    tests/SampleModelsMatrix.cpp
+    src/core/PackageScanner.cpp
+    src/core/HeaderAnalyzer.cpp
+    src/core/LibAnalyzer.cpp
+    src/core/PeAnalyzer.cpp
+    src/core/DllLoader.cpp
+    src/core/PrecheckSummary.cpp
+    src/utils/MemoryUtils.cpp
+    src/utils/SehHelper.cpp
+)
+target_compile_definitions(SampleModelsMatrix PRIVATE NOMINMAX)
+target_link_libraries(SampleModelsMatrix PRIVATE Qt5::Core psapi.lib)
 
 # Install configuration (Default target directory: ${CMAKE_SOURCE_DIR}/dist)
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -80,7 +168,30 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 install(TARGETS ModelValidator DESTINATION .)
-install(TARGETS StandardWeapon FaultyWeapon DESTINATION sample_models)
-install(FILES src/ui/themestyle.qss DESTINATION .)
 
+# CompatibleWeapon F/G packages (include/lib/models) when targets exist
+if(TARGET CompatibleWeaponF)
+    install(TARGETS CompatibleWeaponF
+            RUNTIME DESTINATION sample_models/CompatibleWeaponF/models
+            ARCHIVE DESTINATION sample_models/CompatibleWeaponF/lib
+            LIBRARY DESTINATION sample_models/CompatibleWeaponF/models)
+    install(FILES
+            sample_models/CompatibleWeaponF/WeaponModel.h
+            sample_models/CompatibleWeaponF/WeaponObject.h
+            DESTINATION sample_models/CompatibleWeaponF/include)
+    install(FILES sample_models/CompatibleWeaponF/README.md
+            DESTINATION sample_models/CompatibleWeaponF)
+endif()
 
+if(TARGET CompatibleWeaponG)
+    install(TARGETS CompatibleWeaponG
+            RUNTIME DESTINATION sample_models/CompatibleWeaponG/models
+            ARCHIVE DESTINATION sample_models/CompatibleWeaponG/lib
+            LIBRARY DESTINATION sample_models/CompatibleWeaponG/models)
+    install(FILES
+            sample_models/CompatibleWeaponG/WeaponModel.h
+            sample_models/CompatibleWeaponG/WeaponObject.h
+            DESTINATION sample_models/CompatibleWeaponG/include)
+    install(FILES sample_models/CompatibleWeaponG/README.md
+            DESTINATION sample_models/CompatibleWeaponG)
+endif()
