@@ -2666,8 +2666,6 @@ ApplicationWindow {
                                             color: "#64788a"
                                             font.family: "Consolas"
                                             font.pixelSize: 13
-                                            lineHeight: 1.25
-                                            lineHeightMode: Text.ProportionalHeight
                                             horizontalAlignment: Text.AlignRight
                                         }
                                     }
@@ -3349,7 +3347,7 @@ ApplicationWindow {
                                         color: appController.compileLog.length > 0 ? "#e2e8f0" : "#64748b"
                                         font.family: "Consolas"
                                         font.pixelSize: 11
-                                        background: Rectangle { color: "transparent" }
+                                        background: Rectangle { color: "#0f172a" }
                                     }
                                 }
                             }
@@ -3369,6 +3367,16 @@ ApplicationWindow {
             codeEditor.text = appController.selectedUserMain
             runtimeStepsBox.value = appController.selectedMultiObjectSteps
             runtimeDtField.text = String(appController.selectedMultiObjectDt)
+        }
+
+        Connections {
+            target: appController
+            onModelDetailsChanged: {
+                if (codeScroll && codeScroll.contentItem) {
+                    codeScroll.contentItem.contentY = 0
+                    codeScroll.contentItem.contentX = 0
+                }
+            }
         }
     }
 

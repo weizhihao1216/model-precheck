@@ -66,30 +66,12 @@ QIcon BuildAppIcon() {
     return icon;
 }
 
-// 针对不同 Qt 版本的高分屏（High-DPI）跨机器缩放自适应策略：
+// 针对不同 Qt 版本的高分屏（High-DPI）跨机器缩放策略：
 // 1. Qt 5.14+：原生支持 HighDpiScaleFactorRoundingPolicy::PassThrough，
-//    完全由操作系统与 Qt 引擎无损浮点缩放，不人为设置 QT_SCALE_FACTOR。
-// 2. Qt 5.11：Windows 下默认只支持整数缩放（125% -> 1.0, 150% -> 2.0），
-//    导致 150% 高分屏被放大为 200%。仅在 Qt 5.11 下对整数取整误差进行精准补偿，
-//    使实际有效缩放严格还原为系统的真实比例（如 1.5 / 2.0 = 0.75，总缩放为 1.50）。
-// 3. 彻底废除按 1920x1040 暴力缩小的错误逻辑，确保在各类物理屏幕上字体都保持舒适可读。
-#if (QT_VERSION < QT_VERSION_CHECK(5, 14, 0))
-qreal CalculateDpiCompensation() {
-    qreal osScale = 1.0;
-    const int logicalWidth = GetSystemMetrics(SM_CXSCREEN);
-    DEVMODEW mode{};
-    mode.dmSize = sizeof(mode);
-    if (logicalWidth > 0 && EnumDisplaySettingsW(nullptr, ENUM_CURRENT_SETTINGS, &mode)
-        && mode.dmPelsWidth > 0) {
-        osScale = static_cast<qreal>(mode.dmPelsWidth) / logicalWidth;
-        osScale = qRound(osScale * 4.0) / 4.0;
-    }
-
-    const qreal qtBaseScale = qMax<qreal>(1.0, qRound(osScale));
-    const qreal compensation = osScale / qtBaseScale;
-    return compensation;
-}
-#endif
+//    完全由操作系统与 Qt 引擎无损浮点缩放。
+// 2. Qt 5.11：使用 Qt 官方标准的 AA_EnableHighDpiScaling 与 AA_UseHighDpiPixmaps。
+//    严禁在 Qt 5.11 下人为设置非整数 QT_SCALE_FACTOR（如 0.75），否则 Qt 5.11 的
+//    文本排版引擎（QTextDocument / TextArea）会出现严重的字形错位、重影与行重叠 Bug。
 
 } // namespace
 
@@ -97,15 +79,6 @@ int main(int argc, char* argv[]) {
     QT_INIT_HIGH_DPI_ROUNDING();
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-
-#if (QT_VERSION < QT_VERSION_CHECK(5, 14, 0))
-    // 浠呴拡瀵?Qt 5.11 琛ュ伩鏁存暟鍙栨暣璇樊锛涚敤鎴锋樉寮忔寚瀹?QT_SCALE_FACTOR 鏃朵笉骞查
-    if (!qEnvironmentVariableIsSet("QT_SCALE_FACTOR")) {
-        const qreal factor = CalculateDpiCompensation();
-        if (factor > 0.05 && qAbs(factor - 1.0) > 0.02)
-            qputenv("QT_SCALE_FACTOR", QByteArray::number(factor, 'f', 3));
-    }
-#endif
 
     QQuickStyle::setStyle(QT_DEFAULT_QUICK_STYLE);
 
