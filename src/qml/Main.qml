@@ -202,14 +202,14 @@ ApplicationWindow {
 
                 Repeater {
                     model: [
-                        { label: qsTr("开始预检"), mark: "⌂",
+                        { label: qsTr("开始预检"), icon: "home",
                           active: !configurationPopup.opened
                                   && !resultsPopup.opened && !reportCenterPopup.opened
                                   && !settingsPopup.opened && !specialtyPopup.opened, action: 0 },
-                        { label: qsTr("型号与代码"), mark: "</>", active: configurationPopup.opened, action: 1 },
-                        { label: qsTr("专项测试"), mark: "⌁", active: specialtyPopup.opened, action: 5 },
-                        { label: qsTr("检查结果"), mark: "✓", active: resultsPopup.opened, action: 2 },
-                        { label: qsTr("报告中心"), mark: "▥", active: reportCenterPopup.opened, action: 3 }
+                        { label: qsTr("型号与代码"), icon: "code", active: configurationPopup.opened, action: 1 },
+                        { label: qsTr("专项测试"), icon: "flash", active: specialtyPopup.opened, action: 5 },
+                        { label: qsTr("检查结果"), icon: "check", active: resultsPopup.opened, action: 2 },
+                        { label: qsTr("报告中心"), icon: "report", active: reportCenterPopup.opened, action: 3 }
                     ]
                     delegate: Rectangle {
                         Layout.fillWidth: true
@@ -228,25 +228,20 @@ ApplicationWindow {
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        RowLayout {
+                        Row {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.left: parent.left
-                            anchors.leftMargin: 17
+                            anchors.leftMargin: 16
                             spacing: 14
-                            Text {
-                                Layout.preferredWidth: 27
-                                Layout.alignment: Qt.AlignVCenter
-                                text: modelData.mark
+
+                            AppIcon {
+                                name: modelData.icon
+                                size: 20
                                 color: modelData.active ? window.teal : window.secondaryInk
-                                font.pixelSize: modelData.action === 1 ? 12 : 19
-                                font.weight: Font.Bold
-                                horizontalAlignment: Text.AlignHCenter
+                                anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                // 与侧栏底部「设置」同样：行盒居中后文字仍偏高 1.5px（见该处注释），
-                                // 用 topMargin=3（下移 1.5px）让文字正对图标中心。
-                                Layout.topMargin: 3
+                                anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.label
                                 color: modelData.active ? window.tealDark : window.ink
                                 font.pixelSize: 14
@@ -281,25 +276,21 @@ ApplicationWindow {
                     height: 48
                     radius: 7
                     color: settingsMouse.containsMouse ? "#f4f7fa" : "transparent"
-                    // 图标与文字垂直对齐：Row 是顶部对齐（差 4.5px），RowLayout+AlignVCenter 只对齐行盒。
-                    // 行盒居中后仍差 1.5px（字号 19/14 不同，字形墨迹在行盒里的位置不同）；
-                    // 残差按实际渲染像素量得（齿轮墨迹中心 26.5、文字 25.0），
-                    // 故给文字 topMargin=3 —— 布局把项下移 topMargin/2，取整后为 2px，
-                    // 实测两者墨迹中心只差 0.5px（像素取整下的最小残差）。
-                    RowLayout {
+
+                    Row {
                         anchors.left: parent.left
-                        anchors.leftMargin: 18
+                        anchors.leftMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 14
-                        Text {
-                            Layout.alignment: Qt.AlignVCenter
-                            text: "⚙"
+
+                        AppIcon {
+                            name: "gear"
+                            size: 20
                             color: window.secondaryInk
-                            font.pixelSize: 19
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            Layout.alignment: Qt.AlignVCenter
-                            Layout.topMargin: 3
+                            anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("设置")
                             color: window.ink
                             font.pixelSize: 14
@@ -406,10 +397,10 @@ ApplicationWindow {
 
                         Repeater {
                             model: [
-                                { number: "✓", title: qsTr("准备型号"), done: appController.modelCount > 0, current: appController.modelCount === 0 },
-                                { number: "✓", title: qsTr("配置代码"), done: appController.modelCount > 0 && appController.readiness >= 67, current: appController.modelCount > 0 && appController.readiness < 67 },
-                                { number: "3", title: qsTr("编译确认"), done: appController.modelCount > 0 && appController.pendingCount === 0, current: appController.modelCount > 0 && appController.readiness >= 67 && appController.pendingCount > 0 },
-                                { number: "4", title: qsTr("执行预检"), done: false, current: appController.modelCount > 0 && appController.pendingCount === 0 }
+                                { title: qsTr("准备型号"), done: appController.modelCount > 0, current: appController.modelCount === 0 },
+                                { title: qsTr("配置代码"), done: appController.modelCount > 0 && appController.readiness >= 67, current: appController.modelCount > 0 && appController.readiness < 67 },
+                                { title: qsTr("编译确认"), done: appController.modelCount > 0 && appController.pendingCount === 0, current: appController.modelCount > 0 && appController.readiness >= 67 && appController.pendingCount > 0 },
+                                { title: qsTr("执行预检"), done: false, current: appController.modelCount > 0 && appController.pendingCount === 0 }
                             ]
                             delegate: RowLayout {
                                 Layout.fillWidth: true
@@ -422,11 +413,21 @@ ApplicationWindow {
                                           : (modelData.current ? window.teal : "#edf1f5")
                                     border.color: modelData.current ? "#7dd8d0" : "transparent"
                                     border.width: modelData.current ? 3 : 0
-                                    Text {
+
+                                    AppIcon {
+                                        visible: modelData.done
+                                        name: "check"
+                                        size: 20
+                                        color: "white"
                                         anchors.centerIn: parent
-                                        text: modelData.number
-                                        color: modelData.done || modelData.current ? "white" : "#8390a3"
-                                        font.pixelSize: 17
+                                    }
+
+                                    Text {
+                                        visible: !modelData.done
+                                        anchors.centerIn: parent
+                                        text: (index + 1).toString()
+                                        color: modelData.current ? "white" : "#8390a3"
+                                        font.pixelSize: 16
                                         font.weight: Font.Bold
                                     }
                                 }
@@ -677,8 +678,8 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         implicitHeight: 48
                                         text: appController.modelCount === 0 ? qsTr("＋ 添加型号")
-                                              : (appController.pendingCount > 0 ? qsTr("⚙  编译待处理型号")
-                                                                                 : qsTr("▶  开始一键预检"))
+                                              : (appController.pendingCount > 0 ? qsTr("编译待处理型号")
+                                                                                 : qsTr("开始一键预检"))
                                         onClicked: window.openPrimaryAction()
                                         contentItem: Text {
                                             text: parent.text
@@ -1314,7 +1315,7 @@ ApplicationWindow {
                                     }
                                     Text {
                                         width: parent.width
-                                        text: modelData.compiled ? qsTr("✓ 已编译") : qsTr("需要先编译")
+                                        text: modelData.compiled ? qsTr("已编译") : qsTr("需要先编译")
                                         color: modelData.compiled ? window.green : window.amber
                                         font.pixelSize: 12
                                     }
@@ -2819,7 +2820,7 @@ ApplicationWindow {
                                 font.pixelSize: 12
                             }
                             AppButton {
-                                text: appController.compileBusy ? qsTr("正在编译…") : qsTr("⚙  保存并编译")
+                                text: appController.compileBusy ? qsTr("正在编译…") : qsTr("保存并编译")
                                 implicitWidth: 132
                                 implicitHeight: 40
                                 enabled: appController.selectedModelIndex >= 0 && !appController.compileBusy
@@ -2952,12 +2953,12 @@ ApplicationWindow {
                                                     radius: 4
                                                     color: enabledCheck.checked ? window.teal : "white"
                                                     border.color: enabledCheck.checked ? window.teal : "#a8b5c2"
-                                                    Text {
-                                                        anchors.centerIn: parent
-                                                        text: enabledCheck.checked ? "✓" : ""
+                                                    AppIcon {
+                                                        visible: enabledCheck.checked
+                                                        name: "check"
+                                                        size: 12
                                                         color: "white"
-                                                        font.pixelSize: 12
-                                                        font.weight: Font.Bold
+                                                        anchors.centerIn: parent
                                                     }
                                                 }
                                                 ToolTip.visible: hovered
@@ -4005,12 +4006,11 @@ ApplicationWindow {
                                 height: 70
                                 radius: 35
                                 color: window.tealPale
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "✓"
+                                AppIcon {
+                                    name: "check"
+                                    size: 36
                                     color: window.teal
-                                    font.pixelSize: 32
-                                    font.weight: Font.Bold
+                                    anchors.centerIn: parent
                                 }
                             }
                             Text {
@@ -4078,12 +4078,19 @@ ApplicationWindow {
                                 height: 44
                                 radius: 22
                                 color: appController.resultOverallPass ? window.green : window.amber
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: appController.resultOverallPass ? "✓" : "!"
+                                AppIcon {
+                                    visible: appController.resultOverallPass
+                                    name: "check"
+                                    size: 22
                                     color: "white"
-                                    font.pixelSize: 21
-                                    font.weight: Font.Bold
+                                    anchors.centerIn: parent
+                                }
+                                AppIcon {
+                                    visible: !appController.resultOverallPass
+                                    name: "alert"
+                                    size: 20
+                                    color: "white"
+                                    anchors.centerIn: parent
                                 }
                             }
                             ColumnLayout {
@@ -4397,12 +4404,19 @@ ApplicationWindow {
                                         height: 30
                                         radius: 15
                                         color: modelData.overallPass ? window.greenPale : window.amberPale
-                                        Text {
+                                        AppIcon {
+                                            visible: modelData.overallPass
+                                            name: "check"
+                                            size: 16
+                                            color: window.green
                                             anchors.centerIn: parent
-                                            text: modelData.overallPass ? "✓" : "!"
-                                            color: modelData.overallPass ? window.green : window.amber
-                                            font.pixelSize: 14
-                                            font.weight: Font.Bold
+                                        }
+                                        AppIcon {
+                                            visible: !modelData.overallPass
+                                            name: "alert"
+                                            size: 16
+                                            color: window.amber
+                                            anchors.centerIn: parent
                                         }
                                     }
                                     ColumnLayout {
@@ -4835,12 +4849,19 @@ ApplicationWindow {
                                 radius: 18
                                 color: appController.resultHeaderConflicts.overallPass
                                        ? window.greenPale : window.redPale
-                                Text {
+                                AppIcon {
+                                    visible: appController.resultHeaderConflicts.overallPass
+                                    name: "check"
+                                    size: 18
+                                    color: window.green
                                     anchors.centerIn: parent
-                                    text: appController.resultHeaderConflicts.overallPass ? "✓" : "!"
-                                    color: appController.resultHeaderConflicts.overallPass ? window.green : window.red
-                                    font.pixelSize: 17
-                                    font.weight: Font.Bold
+                                }
+                                AppIcon {
+                                    visible: !appController.resultHeaderConflicts.overallPass
+                                    name: "alert"
+                                    size: 18
+                                    color: window.red
+                                    anchors.centerIn: parent
                                 }
                             }
                             ColumnLayout {
@@ -6873,7 +6894,7 @@ ApplicationWindow {
                                 height: 48
                                 radius: 10
                                 color: window.tealPale
-                                Text { anchors.centerIn: parent; text: "▥"; color: window.teal; font.pixelSize: 24 }
+                                AppIcon { name: "report"; size: 24; color: window.teal; anchors.centerIn: parent }
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -6929,12 +6950,19 @@ ApplicationWindow {
                                     height: 42
                                     radius: 21
                                     color: modelData.overallPass ? window.greenPale : window.amberPale
-                                    Text {
+                                    AppIcon {
+                                        visible: modelData.overallPass
+                                        name: "check"
+                                        size: 20
+                                        color: window.green
                                         anchors.centerIn: parent
-                                        text: modelData.overallPass ? "✓" : "!"
-                                        color: modelData.overallPass ? window.green : window.amber
-                                        font.pixelSize: 19
-                                        font.weight: Font.Bold
+                                    }
+                                    AppIcon {
+                                        visible: !modelData.overallPass
+                                        name: "alert"
+                                        size: 20
+                                        color: window.amber
+                                        anchors.centerIn: parent
                                     }
                                 }
                                 ColumnLayout {
