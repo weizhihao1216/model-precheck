@@ -2516,44 +2516,64 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 implicitHeight: 46
                                 radius: 6
-                                color: "#f7fafc"
+                                color: "#f8fafc"
                                 border.color: window.line
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 12
                                     anchors.rightMargin: 12
                                     spacing: 10
-                                    Text {
+
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        text: qsTr("运行步数与步长：预检、压测、并发与多对象测试共用，修改后无需重新编译。")
-                                        color: window.secondaryInk
-                                        font.pixelSize: 12
-                                        wrapMode: Text.WordWrap
+                                        Layout.minimumWidth: 0
+                                        spacing: 6
+                                        Text {
+                                            text: qsTr("仿真步进参数")
+                                            color: window.ink
+                                            font.pixelSize: 13
+                                            font.weight: Font.DemiBold
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            text: qsTr("(多项测试共用，修改后无需重新编译)")
+                                            color: window.secondaryInk
+                                            font.pixelSize: 11
+                                            elide: Text.ElideRight
+                                        }
                                     }
-                                    Text { text: qsTr("步数"); color: window.secondaryInk; font.pixelSize: 12 }
-                                    AppSpinBox {
-                                        id: runtimeStepsBox
-                                        from: 1
-                                        to: 100000
-                                        stepSize: 1
-                                        editable: true
-                                        implicitWidth: 132
-                                        implicitHeight: 32
-                                    }
-                                    Text { text: qsTr("步长 dt"); color: window.secondaryInk; font.pixelSize: 12 }
-                                    AppTextField {
-                                        id: runtimeDtField
-                                        implicitWidth: 100
-                                        font.pixelSize: 15
-                                        validator: DoubleValidator { bottom: 0.000001; top: 60.0 }
-                                    }
-                                    AppButton {
-                                        text: qsTr("应用")
-                                        implicitWidth: 72
-                                        implicitHeight: 32
-                                        enabled: appController.selectedModelIndex >= 0
-                                        onClicked: appController.saveStepSettings(
-                                            runtimeStepsBox.value, Number(runtimeDtField.text))
+
+                                    Item { Layout.fillWidth: true }
+
+                                    RowLayout {
+                                        spacing: 8
+                                        Text { text: qsTr("步数"); color: window.ink; font.pixelSize: 12 }
+                                        AppSpinBox {
+                                            id: runtimeStepsBox
+                                            from: 1
+                                            to: 100000
+                                            stepSize: 1
+                                            editable: true
+                                            implicitWidth: 106
+                                            implicitHeight: 30
+                                        }
+                                        Text { text: qsTr("步长 dt"); color: window.ink; font.pixelSize: 12 }
+                                        AppTextField {
+                                            id: runtimeDtField
+                                            implicitWidth: 80
+                                            implicitHeight: 30
+                                            font.pixelSize: 12
+                                            validator: DoubleValidator { bottom: 0.000001; top: 60.0 }
+                                        }
+                                        AppButton {
+                                            text: qsTr("应用")
+                                            implicitWidth: 64
+                                            implicitHeight: 30
+                                            enabled: appController.selectedModelIndex >= 0
+                                            onClicked: appController.saveStepSettings(
+                                                runtimeStepsBox.value, Number(runtimeDtField.text))
+                                        }
                                     }
                                 }
                             }
