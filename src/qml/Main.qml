@@ -2846,328 +2846,509 @@ ApplicationWindow {
                     }
                 }
 
-                Rectangle {
-                    // 小窗口下收窄本列，把宽度让给中间的代码输入框。
+                ColumnLayout {
+                    id: configurationRightColumn
+                    // 右侧区域：明确关闭 fillWidth，锁定宽度，避免挤占中间代码编辑区
+                    Layout.fillWidth: false
                     Layout.preferredWidth: window.width < 1400
-                                           ? 360
-                                           : Math.min(450, Math.max(340, window.width * 0.24))
+                                           ? 380
+                                           : Math.min(460, Math.max(380, window.width * 0.25))
+                    Layout.maximumWidth: 460
                     Layout.fillHeight: true
-                    radius: 9
-                    color: "white"
-                    border.color: window.line
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 6
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
-                                text: qsTr("随机变量")
-                                color: window.ink
-                                font.pixelSize: 16
-                                font.weight: Font.Bold
-                            }
-                            Item { Layout.fillWidth: true }
-                            AppButton {
-                                text: qsTr("＋ 添加")
-                                implicitWidth: 76
-                                implicitHeight: 30
-                                enabled: appController.selectedModelIndex >= 0
-                                onClicked: appController.addRandomVariable()
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: window.tealDark
-                                    font.pixelSize: 11
-                                    font.weight: Font.DemiBold
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                                background: Rectangle {
-                                    radius: 5
-                                    color: parent.hovered ? window.tealPale : "white"
-                                    border.color: "#78cfc7"
-                                }
-                            }
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("每次运行自动在最小值和最大值之间取值；在 UserMain 中通过 R.变量名 使用。")
-                            color: window.secondaryInk
-                            wrapMode: Text.WordWrap
-                            font.pixelSize: 11
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 5
-                            Text { Layout.preferredWidth: 34; text: qsTr("启用"); color: window.secondaryInk; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 62 : 90; text: qsTr("变量名"); color: window.secondaryInk; font.pixelSize: 12 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 78 : 104; text: qsTr("类型"); color: window.secondaryInk; font.pixelSize: 12 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最小值"); color: window.secondaryInk; font.pixelSize: 12 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最大值"); color: window.secondaryInk; font.pixelSize: 12 }
-                            Item { Layout.fillWidth: true }
-                            Item { Layout.preferredWidth: 26 }
-                        }
-                        ScrollView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            ColumnLayout {
-                                width: parent.width
-                                spacing: 5
-                                Repeater {
-                                    model: appController.selectedRandomVars
-                                    delegate: Rectangle {
-                                        id: randomVariableRow
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 40
-                                        radius: 6
-                                        color: "#f8fafc"
-                                        border.color: window.line
+                    spacing: 14
 
-                                        function saveVariable() {
-                                            appController.updateRandomVariable(
-                                                index,
-                                                enabledCheck.checked,
-                                                nameField.text,
-                                                typeField.currentText,
-                                                Number(minField.text),
-                                                Number(maxField.text))
+                    // 卡片 1：随机变量配置表
+                    Rectangle {
+                        id: randomVariablesCard
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(320, Math.max(190, (appController.selectedRandomVars ? appController.selectedRandomVars.length : 0) * 38 + 140))
+                        radius: 9
+                        color: "white"
+                        border.color: window.line
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                RowLayout {
+                                    spacing: 6
+                                    Text {
+                                        text: qsTr("随机变量")
+                                        color: window.ink
+                                        font.pixelSize: 15
+                                        font.weight: Font.Bold
+                                    }
+                                    Rectangle {
+                                        radius: 8
+                                        height: 18
+                                        implicitWidth: varCountText.implicitWidth + 10
+                                        color: "#f1f5f9"
+                                        Text {
+                                            id: varCountText
+                                            anchors.centerIn: parent
+                                            text: (appController.selectedRandomVars ? appController.selectedRandomVars.length : 0) + qsTr(" 项")
+                                            color: "#64748b"
+                                            font.pixelSize: 10
+                                            font.weight: Font.Medium
                                         }
+                                    }
+                                }
+                                Item { Layout.fillWidth: true }
+                                AppButton {
+                                    text: qsTr("＋ 添加")
+                                    implicitWidth: 72
+                                    implicitHeight: 28
+                                    enabled: appController.selectedModelIndex >= 0
+                                    onClicked: appController.addRandomVariable()
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: window.tealDark
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        radius: 5
+                                        color: parent.hovered ? window.tealPale : "white"
+                                        border.color: "#78cfc7"
+                                    }
+                                }
+                            }
 
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 6
-                                            anchors.rightMargin: 2
-                                            spacing: 5
-                                            CheckBox {
-                                                id: enabledCheck
-                                                text: ""
-                                                checked: modelData.enabled
-                                                implicitWidth: 34
-                                                implicitHeight: 24
-                                                indicator: Rectangle {
-                                                    implicitWidth: 18
-                                                    implicitHeight: 18
-                                                    x: 6
-                                                    y: 3
-                                                    radius: 4
-                                                    color: enabledCheck.checked ? window.teal : "white"
-                                                    border.color: enabledCheck.checked ? window.teal : "#a8b5c2"
-                                                    AppIcon {
-                                                        visible: enabledCheck.checked
-                                                        name: "check"
-                                                        size: 12
-                                                        color: "white"
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("每次运行自动在范围间取值；在 UserMain 中通过 R.变量名 使用。")
+                                color: window.secondaryInk
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: 11
+                            }
+
+                            // 统一表头背景条：确保与下方数据行左右外边距、列宽、间距完全一致，像素级对齐
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: 4
+                                color: "#f1f5f9"
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 6
+                                    anchors.rightMargin: 6
+                                    spacing: 4
+                                    Text {
+                                        Layout.preferredWidth: 28
+                                        text: qsTr("启用")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 80
+                                        leftPadding: 4
+                                        text: qsTr("变量名")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        Layout.preferredWidth: 76
+                                        text: qsTr("类型")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    Text {
+                                        Layout.preferredWidth: 54
+                                        text: qsTr("最小值")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    Text {
+                                        Layout.preferredWidth: 54
+                                        text: qsTr("最大值")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    Text {
+                                        Layout.preferredWidth: 26
+                                        text: qsTr("操作")
+                                        color: "#475569"
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                }
+                            }
+
+                            ScrollView {
+                                id: randomVarsScroll
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                                ColumnLayout {
+                                    width: randomVarsScroll.availableWidth
+                                    spacing: 4
+                                    Repeater {
+                                        model: appController.selectedRandomVars
+                                        delegate: Rectangle {
+                                            id: randomVariableRow
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 34
+                                            radius: 4
+                                            color: "#f8fafc"
+                                            border.color: "#e2e8f0"
+
+                                            function saveVariable() {
+                                                appController.updateRandomVariable(
+                                                    index,
+                                                    enabledCheck.checked,
+                                                    nameField.text,
+                                                    typeField.currentText,
+                                                    Number(minField.text),
+                                                    Number(maxField.text))
+                                            }
+
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 6
+                                                anchors.rightMargin: 6
+                                                spacing: 4
+
+                                                Item {
+                                                    Layout.preferredWidth: 28
+                                                    Layout.preferredHeight: 24
+                                                    CheckBox {
+                                                        id: enabledCheck
+                                                        text: ""
+                                                        checked: modelData.enabled
                                                         anchors.centerIn: parent
+                                                        implicitWidth: 18
+                                                        implicitHeight: 18
+                                                        indicator: Rectangle {
+                                                            implicitWidth: 18
+                                                            implicitHeight: 18
+                                                            radius: 4
+                                                            color: enabledCheck.checked ? window.teal : "white"
+                                                            border.color: enabledCheck.checked ? window.teal : "#94a3b8"
+                                                            AppIcon {
+                                                                visible: enabledCheck.checked
+                                                                name: "check"
+                                                                size: 11
+                                                                color: "white"
+                                                                anchors.centerIn: parent
+                                                            }
+                                                        }
+                                                        ToolTip.visible: hovered
+                                                        ToolTip.text: qsTr("是否在运行时生成该随机变量")
+                                                        onClicked: randomVariableRow.saveVariable()
                                                     }
                                                 }
-                                                ToolTip.visible: hovered
-                                                ToolTip.text: qsTr("是否在运行时生成该随机变量")
-                                                onClicked: randomVariableRow.saveVariable()
-                                            }
-                                            TextField {
-                                                id: nameField
-                                                Layout.preferredWidth: window.width < 1400 ? 62 : 90
-                                                implicitHeight: 28
-                                                text: modelData.name
-                                                placeholderText: qsTr("变量名")
-                                                selectByMouse: true
-                                                color: window.ink
-                                                selectionColor: window.tealPale
-                                                selectedTextColor: window.ink
-                                                font.pixelSize: 11
-                                                background: Rectangle {
-                                                    radius: 4
-                                                    color: "white"
-                                                    border.color: nameField.activeFocus ? window.teal : window.line
-                                                }
-                                                ToolTip.visible: hovered && text.length > 0
-                                                ToolTip.text: qsTr("代码中使用：R.%1").arg(text)
-                                                onEditingFinished: randomVariableRow.saveVariable()
-                                            }
-                                            AppComboBox {
-                                                id: typeField
-                                                Layout.preferredWidth: window.width < 1400 ? 78 : 104
-                                                implicitHeight: 28
-                                                model: ["double", "int"]
-                                                currentIndex: modelData.type === "int" ? 1 : 0
-                                                font.pixelSize: 11
-                                                contentItem: Text {
-                                                    leftPadding: 9
-                                                    rightPadding: 24
-                                                    text: typeField.currentText
+
+                                                TextField {
+                                                    id: nameField
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 80
+                                                    implicitHeight: 26
+                                                    text: modelData.name
+                                                    placeholderText: qsTr("变量名")
+                                                    selectByMouse: true
                                                     color: window.ink
+                                                    selectionColor: window.tealPale
+                                                    selectedTextColor: window.ink
                                                     font.pixelSize: 11
-                                                    verticalAlignment: Text.AlignVCenter
-                                                    elide: Text.ElideRight
+                                                    leftPadding: 6
+                                                    rightPadding: 6
+                                                    background: Rectangle {
+                                                        radius: 4
+                                                        color: "white"
+                                                        border.color: nameField.activeFocus ? window.teal : "#cbd5e1"
+                                                    }
+                                                    ToolTip.visible: hovered && text.length > 0
+                                                    ToolTip.text: qsTr("代码中使用：R.%1").arg(text)
+                                                    onEditingFinished: randomVariableRow.saveVariable()
                                                 }
-                                                indicator: Text {
-                                                    x: typeField.width - width - 8
-                                                    y: (typeField.height - height) / 2
-                                                    text: "▾"
-                                                    color: window.secondaryInk
-                                                    font.pixelSize: 12
-                                                }
-                                                delegate: ItemDelegate {
-                                                    width: typeField.width
-                                                    height: 30
-                                                    highlighted: typeField.highlightedIndex === index
+
+                                                AppComboBox {
+                                                    id: typeField
+                                                    Layout.preferredWidth: 76
+                                                    implicitHeight: 26
+                                                    model: ["double", "int"]
+                                                    currentIndex: modelData.type === "int" ? 1 : 0
+                                                    font.pixelSize: 11
                                                     contentItem: Text {
-                                                        text: modelData
+                                                        leftPadding: 6
+                                                        rightPadding: 16
+                                                        text: typeField.currentText
                                                         color: window.ink
                                                         font.pixelSize: 11
-                                                        leftPadding: 8
                                                         verticalAlignment: Text.AlignVCenter
+                                                        elide: Text.ElideRight
                                                     }
-                                                    background: Rectangle {
-                                                        color: parent.highlighted ? window.tealPale : "white"
+                                                    indicator: Text {
+                                                        x: typeField.width - width - 4
+                                                        y: (typeField.height - height) / 2
+                                                        text: "▾"
+                                                        color: "#64748b"
+                                                        font.pixelSize: 10
                                                     }
-                                                }
-                                                popup: Popup {
-                                                    y: typeField.height - 1
-                                                    width: typeField.width
-                                                    implicitHeight: contentItem.implicitHeight + 2
-                                                    padding: 1
-                                                    contentItem: ListView {
-                                                        clip: true
-                                                        implicitHeight: contentHeight
-                                                        model: typeField.popup.visible ? typeField.delegateModel : null
-                                                        currentIndex: typeField.highlightedIndex
+                                                    delegate: ItemDelegate {
+                                                        width: typeField.width
+                                                        height: 28
+                                                        highlighted: typeField.highlightedIndex === index
+                                                        contentItem: Text {
+                                                            text: modelData
+                                                            color: window.ink
+                                                            font.pixelSize: 11
+                                                            leftPadding: 6
+                                                            verticalAlignment: Text.AlignVCenter
+                                                        }
+                                                        background: Rectangle {
+                                                            color: parent.highlighted ? window.tealPale : "white"
+                                                        }
+                                                    }
+                                                    popup: Popup {
+                                                        y: typeField.height + 1
+                                                        width: typeField.width
+                                                        implicitHeight: contentItem.implicitHeight + 2
+                                                        padding: 1
+                                                        contentItem: ListView {
+                                                            clip: true
+                                                            implicitHeight: contentHeight
+                                                            model: typeField.popup.visible ? typeField.delegateModel : null
+                                                            currentIndex: typeField.highlightedIndex
+                                                        }
+                                                        background: Rectangle {
+                                                            radius: 4
+                                                            color: "white"
+                                                            border.color: window.teal
+                                                        }
                                                     }
                                                     background: Rectangle {
                                                         radius: 4
                                                         color: "white"
-                                                        border.color: window.teal
+                                                        border.color: typeField.activeFocus ? window.teal : "#cbd5e1"
                                                     }
+                                                    onActivated: randomVariableRow.saveVariable()
                                                 }
-                                                background: Rectangle {
-                                                    radius: 4
-                                                    color: "white"
-                                                    border.color: typeField.activeFocus ? window.teal : window.line
-                                                }
-                                                onActivated: randomVariableRow.saveVariable()
-                                            }
-                                            TextField {
-                                                id: minField
-                                                Layout.preferredWidth: window.width < 1400 ? 48 : 64
-                                                implicitHeight: 28
-                                                text: modelData.minimum
-                                                selectByMouse: true
-                                                validator: DoubleValidator { }
-                                                color: window.ink
-                                                horizontalAlignment: Text.AlignRight
-                                                font.pixelSize: 11
-                                                background: Rectangle {
-                                                    radius: 4
-                                                    color: "white"
-                                                    border.color: minField.activeFocus ? window.teal : window.line
-                                                }
-                                                ToolTip.visible: hovered
-                                                ToolTip.text: qsTr("随机范围最小值")
-                                                onEditingFinished: randomVariableRow.saveVariable()
-                                            }
-                                            TextField {
-                                                id: maxField
-                                                Layout.preferredWidth: window.width < 1400 ? 48 : 64
-                                                implicitHeight: 28
-                                                text: modelData.maximum
-                                                selectByMouse: true
-                                                validator: DoubleValidator { }
-                                                color: window.ink
-                                                horizontalAlignment: Text.AlignRight
-                                                font.pixelSize: 11
-                                                background: Rectangle {
-                                                    radius: 4
-                                                    color: "white"
-                                                    border.color: maxField.activeFocus ? window.teal : window.line
-                                                }
-                                                ToolTip.visible: hovered
-                                                ToolTip.text: qsTr("随机范围最大值")
-                                                onEditingFinished: randomVariableRow.saveVariable()
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            AppButton {
-                                                implicitWidth: 26
-                                                implicitHeight: 26
-                                                text: "×"
-                                                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                                                onClicked: appController.removeRandomVariable(index)
-                                                contentItem: Text {
-                                                    text: parent.text
-                                                    color: window.red
-                                                    font.pixelSize: 17
+
+                                                TextField {
+                                                    id: minField
+                                                    Layout.preferredWidth: 54
+                                                    implicitHeight: 26
+                                                    text: modelData.minimum
+                                                    selectByMouse: true
+                                                    validator: DoubleValidator { }
+                                                    color: window.ink
                                                     horizontalAlignment: Text.AlignHCenter
-                                                    verticalAlignment: Text.AlignVCenter
+                                                    font.pixelSize: 11
+                                                    background: Rectangle {
+                                                        radius: 4
+                                                        color: "white"
+                                                        border.color: minField.activeFocus ? window.teal : "#cbd5e1"
+                                                    }
+                                                    ToolTip.visible: hovered
+                                                    ToolTip.text: qsTr("随机范围最小值")
+                                                    onEditingFinished: randomVariableRow.saveVariable()
                                                 }
-                                                background: Rectangle {
-                                                    radius: 4
-                                                    color: parent.hovered ? window.redPale : "white"
-                                                    border.color: "#efc4c8"
+
+                                                TextField {
+                                                    id: maxField
+                                                    Layout.preferredWidth: 54
+                                                    implicitHeight: 26
+                                                    text: modelData.maximum
+                                                    selectByMouse: true
+                                                    validator: DoubleValidator { }
+                                                    color: window.ink
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    font.pixelSize: 11
+                                                    background: Rectangle {
+                                                        radius: 4
+                                                        color: "white"
+                                                        border.color: maxField.activeFocus ? window.teal : "#cbd5e1"
+                                                    }
+                                                    ToolTip.visible: hovered
+                                                    ToolTip.text: qsTr("随机范围最大值")
+                                                    onEditingFinished: randomVariableRow.saveVariable()
+                                                }
+
+                                                AppButton {
+                                                    Layout.preferredWidth: 26
+                                                    Layout.preferredHeight: 24
+                                                    text: "×"
+                                                    onClicked: appController.removeRandomVariable(index)
+                                                    ToolTip.visible: hovered
+                                                    ToolTip.text: qsTr("删除该变量")
+                                                    contentItem: Text {
+                                                        text: parent.text
+                                                        color: parent.hovered ? window.red : "#94a3b8"
+                                                        font.pixelSize: 16
+                                                        font.weight: Font.Bold
+                                                        horizontalAlignment: Text.AlignHCenter
+                                                        verticalAlignment: Text.AlignVCenter
+                                                    }
+                                                    background: Rectangle {
+                                                        radius: 4
+                                                        color: parent.hovered ? window.redPale : "transparent"
+                                                        border.color: parent.hovered ? "#fca5a5" : "transparent"
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                                Text {
-                                    visible: appController.selectedRandomVars.length === 0
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 90
-                                    text: qsTr("暂无随机变量\n点击“添加”创建变量")
-                                    color: window.secondaryInk
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.pixelSize: 12
+                                    Text {
+                                        visible: !appController.selectedRandomVars || appController.selectedRandomVars.length === 0
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 72
+                                        text: qsTr("暂无随机变量\n点击上方“＋ 添加”创建变量")
+                                        color: window.secondaryInk
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 11
+                                        lineHeight: 1.3
+                                    }
                                 }
                             }
                         }
-                        // 编译状态与日志全文：状态栏只有一行放不下 cl.exe 的完整输出，
-                        // 这里放在随机变量下方的空白区域，可换行、可滚动、可选中复制。
-                        Rectangle {
-                            visible: appController.compileLog.length > 0
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 172
-                            Layout.minimumHeight: 96
-                            radius: 6
-                            color: appController.configurationMessage.indexOf(qsTr("失败")) >= 0
-                                   ? "#fff7f7" : "#f7fafc"
-                            border.color: appController.configurationMessage.indexOf(qsTr("失败")) >= 0
-                                          ? "#f1c2c6" : window.line
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 6
-                                RowLayout {
-                                    Layout.fillWidth: true
+                    }
+
+                    // 卡片 2：编译与构建终端日志（自适应填充全部剩余高度，绝不留下空白深渊）
+                    Rectangle {
+                        id: compileLogCard
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 180
+                        radius: 9
+                        color: "white"
+                        border.color: window.line
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                AppIcon {
+                                    name: "report"
+                                    size: 15
+                                    color: window.teal
+                                }
+
+                                Text {
+                                    text: qsTr("编译与构建日志")
+                                    color: window.ink
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                }
+
+                                Rectangle {
+                                    radius: 10
+                                    height: 20
+                                    implicitWidth: compileBadgeText.implicitWidth + 14
+                                    color: appController.compileBusy
+                                           ? "#fef3c7"
+                                           : (appController.configurationMessage.indexOf(qsTr("失败")) >= 0
+                                              ? "#fee2e2"
+                                              : (appController.compileLog.length > 0 ? "#e6f7f5" : "#f1f5f9"))
+                                    border.color: appController.compileBusy
+                                                  ? "#fcd34d"
+                                                  : (appController.configurationMessage.indexOf(qsTr("失败")) >= 0
+                                                     ? "#fca5a5"
+                                                     : (appController.compileLog.length > 0 ? "#78cfc7" : "#cbd5e1"))
                                     Text {
-                                        text: qsTr("编译日志")
-                                        color: window.ink
-                                        font.pixelSize: 12
+                                        id: compileBadgeText
+                                        anchors.centerIn: parent
+                                        text: appController.compileBusy
+                                              ? qsTr("构建中…")
+                                              : (appController.configurationMessage.indexOf(qsTr("失败")) >= 0
+                                                 ? qsTr("编译失败")
+                                                 : (appController.compileLog.length > 0 ? qsTr("已编译") : qsTr("待编译")))
+                                        color: appController.compileBusy
+                                               ? "#b45309"
+                                               : (appController.configurationMessage.indexOf(qsTr("失败")) >= 0
+                                                  ? "#b91c1c"
+                                                  : (appController.compileLog.length > 0 ? window.tealDark : "#64748b"))
+                                        font.pixelSize: 11
                                         font.weight: Font.DemiBold
                                     }
-                                    Item { Layout.fillWidth: true }
-                                    Text {
-                                        text: qsTr("可选中复制")
-                                        color: window.secondaryInk
-                                        font.pixelSize: 12
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                AppButton {
+                                    visible: appController.compileLog.length > 0
+                                    implicitWidth: 64
+                                    implicitHeight: 22
+                                    text: qsTr("复制日志")
+                                    onClicked: {
+                                        compileLogArea.selectAll()
+                                        compileLogArea.copy()
+                                        compileLogArea.deselect()
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: window.tealDark
+                                        font.pixelSize: 11
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        radius: 4
+                                        color: parent.hovered ? window.tealPale : "#f1f5f9"
+                                        border.color: "#cbd5e1"
                                     }
                                 }
+
+                                Text {
+                                    visible: appController.compileLog.length === 0
+                                    text: qsTr("可选中复制")
+                                    color: window.secondaryInk
+                                    font.pixelSize: 11
+                                }
+                            }
+
+                            // 终端暗黑代码风格控制台，高对比度且专业护眼
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 6
+                                color: "#0f172a"
+                                border.color: "#1e293b"
+                                clip: true
+
                                 ScrollView {
                                     id: compileLogScroll
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    Layout.minimumWidth: 0
-                                    clip: true
-                                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                    anchors.fill: parent
+                                    anchors.margins: 8
+                                    ScrollBar.horizontal.policy: ScrollBar.AsNeeded
                                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
                                     TextArea {
+                                        id: compileLogArea
                                         width: compileLogScroll.availableWidth
                                         readOnly: true
                                         selectByMouse: true
-                                        text: appController.compileLog
+                                        text: appController.compileLog.length > 0
+                                              ? appController.compileLog
+                                              : qsTr("// 编译控制台就绪\n// 点击中间区域下方【保存并编译】按钮开始构建模型\n// 此处将实时输出 MSVC 编译细节与依赖项复制状态。")
                                         wrapMode: TextArea.Wrap
-                                        color: "#33415c"
+                                        color: appController.compileLog.length > 0 ? "#e2e8f0" : "#64748b"
                                         font.family: "Consolas"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 11
                                         background: Rectangle { color: "transparent" }
                                     }
                                 }
