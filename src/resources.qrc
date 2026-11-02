@@ -3,6 +3,7 @@
     <file>core/ModelObjectKit.h</file>
     <file>qml/AppButton.qml</file>
     <file>qml/AppComboBox.qml</file>
+    <file>qml/AppIcon.qml</file>
     <file>qml/AppSpinBox.qml</file>
     <file>qml/AppTextField.qml</file>
     <file>qml/AppToleranceField.qml</file>

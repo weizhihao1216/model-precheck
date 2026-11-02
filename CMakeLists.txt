@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
-project(ModelValidator VERSION 1.0 LANGUAGES C CXX)
+project(model-precheck VERSION 1.0 LANGUAGES C CXX)
 
 add_compile_definitions(NOMINMAX)
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+add_compile_definitions(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+add_compile_definitions(_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,23 +13,61 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
     add_compile_options(/utf-8)
     add_compile_options(/W3)
+    add_compile_options(/wd4819)
 endif()
 
-# Qt path: prefer local Qt 5.14.2 (msvc2017_64), fall back to legacy Qt 5.11 path
-if(DEFINED ENV{QTDIR} AND EXISTS "$ENV{QTDIR}/lib/cmake/Qt5")
+# ==============================================================================
+# Qt5 Resolution (Driven strictly by Environment Variables or CMake Cache, NO hardcoding)
+# Supported environment variables:
+#   1. QTDIR / QT_DIR / Qt5_DIR (Direct path to Qt root, e.g. D:\HR\DEV\ThirdParty\Qt5.14\vc143\x64)
+#   2. ThirdPart / THIRDPARTY   (Third-party root folder, e.g. D:\HR\DEV\ThirdParty)
+# ==============================================================================
+set(_QT_ROOT "")
+
+if(CMAKE_PREFIX_PATH)
+    foreach(_PREFIX ${CMAKE_PREFIX_PATH})
+        if(EXISTS "${_PREFIX}/lib/cmake/Qt5")
+            set(_QT_ROOT "${_PREFIX}")
+            break()
+        endif()
+    endforeach()
+endif()
+
+if(NOT _QT_ROOT)
+    if(DEFINED ENV{QTDIR} AND EXISTS "$ENV{QTDIR}/lib/cmake/Qt5")
     set(_QT_ROOT "$ENV{QTDIR}")
-elseif(EXISTS "D:/Qt/5.14.2/msvc2017_64/lib/cmake/Qt5")
-    set(_QT_ROOT "D:/Qt/5.14.2/msvc2017_64")
-elseif(EXISTS "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64/lib/cmake/Qt5")
-    set(_QT_ROOT "D:/HR/DEV/ThirdParty/Qt5.11/vc140/x64")
-else()
-    set(_QT_ROOT "")
+elseif(DEFINED ENV{QT_DIR} AND EXISTS "$ENV{QT_DIR}/lib/cmake/Qt5")
+    set(_QT_ROOT "$ENV{QT_DIR}")
+elseif(DEFINED ENV{Qt5_DIR} AND EXISTS "$ENV{Qt5_DIR}/lib/cmake/Qt5")
+    set(_QT_ROOT "$ENV{Qt5_DIR}")
+elseif(DEFINED QT_DIR AND EXISTS "${QT_DIR}/lib/cmake/Qt5")
+    set(_QT_ROOT "${QT_DIR}")
+endif()
+endif()
+
+# Fallback: check third-party root environment variables (%ThirdPart% / %THIRDPARTY%)
+if(NOT _QT_ROOT)
+    foreach(_ENV_VAR ThirdPart THIRDPARTY THIRD_PARTY)
+        if(DEFINED ENV{${_ENV_VAR}})
+            set(_TP_DIR "$ENV{${_ENV_VAR}}")
+            if(EXISTS "${_TP_DIR}/Qt5.14/vc143/x64/lib/cmake/Qt5")
+                set(_QT_ROOT "${_TP_DIR}/Qt5.14/vc143/x64")
+                break()
+            elseif(EXISTS "${_TP_DIR}/Qt5.14/msvc2017_64/lib/cmake/Qt5")
+                set(_QT_ROOT "${_TP_DIR}/Qt5.14/msvc2017_64")
+                break()
+            elseif(EXISTS "${_TP_DIR}/Qt5.11/vc140/x64/lib/cmake/Qt5")
+                set(_QT_ROOT "${_TP_DIR}/Qt5.11/vc140/x64")
+                break()
+            endif()
+        endif()
+    endforeach()
 endif()
 
 if(_QT_ROOT)
     set(Qt5_DIR "${_QT_ROOT}/lib/cmake/Qt5" CACHE PATH "Qt5 Directory" FORCE)
     list(INSERT CMAKE_PREFIX_PATH 0 "${_QT_ROOT}")
-    message(STATUS "Using Qt at: ${_QT_ROOT}")
+    message(STATUS "Using Qt from environment: ${_QT_ROOT}")
 endif()
 
 set(CMAKE_AUTOMOC ON)
@@ -98,9 +139,9 @@ set(SOURCES
     src/resources.qrc
 )
 
-add_executable(ModelValidator WIN32 ${SOURCES})
+add_executable(model-precheck WIN32 ${SOURCES})
 
-target_link_libraries(ModelValidator PRIVATE
+target_link_libraries(model-precheck PRIVATE
     Qt5::Widgets
     Qt5::Charts
     Qt5::Qml
@@ -134,7 +175,7 @@ add_executable(MultiObjectHarnessSmoke EXCLUDE_FROM_ALL
 target_compile_definitions(MultiObjectHarnessSmoke PRIVATE NOMINMAX)
 target_link_libraries(MultiObjectHarnessSmoke PRIVATE Qt5::Core psapi.lib)
 
-# Static precheck path smoke (PackageScanner + Header/Lib/PE) — no LoadLibrary.
+# Static precheck path smoke (PackageScanner + Header/Lib/PE) -- no LoadLibrary.
 add_executable(StaticPrecheckSmoke EXCLUDE_FROM_ALL
     tests/StaticPrecheckSmoke.cpp
     src/core/PackageScanner.cpp
@@ -167,7 +208,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/dist" CACHE PATH "Install path prefix" FORCE)
 endif()
 
-install(TARGETS ModelValidator DESTINATION .)
+install(TARGETS model-precheck DESTINATION .)
 
 # CompatibleWeapon F/G packages (include/lib/models) when targets exist
 if(TARGET CompatibleWeaponF)

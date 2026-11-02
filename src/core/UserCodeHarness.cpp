@@ -133,31 +133,57 @@ std::string UserCodeHarness::DefaultUserMainTemplate() {
 }
 
 std::string UserCodeHarness::FindVcVars64Bat() {
-    wchar_t* pf86 = nullptr;
-    size_t len = 0;
-    _wdupenv_s(&pf86, &len, L"ProgramFiles(x86)");
-    std::wstring base = pf86 ? pf86 : L"C:\\Program Files (x86)";
-    if (pf86) free(pf86);
+    // 1. Probe via environment variable VCINSTALLDIR
+    wchar_t* envVc = nullptr;
+    size_t envVcLen = 0;
+    _wdupenv_s(&envVc, &envVcLen, L"VCINSTALLDIR");
+    if (envVc) {
+        std::wstring p = envVc;
+        free(envVc);
+        while (!p.empty() && (p.back() == L'\\' || p.back() == L'/')) p.pop_back();
+        p += L"\\Auxiliary\\Build\\vcvars64.bat";
+        if (GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            int n = WideCharToMultiByte(CP_UTF8, 0, p.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            std::string s(n > 0 ? n - 1 : 0, '\0');
+            if (n > 1) WideCharToMultiByte(CP_UTF8, 0, p.c_str(), -1, &s[0], n, nullptr, nullptr);
+            return s;
+        }
+    }
 
-    std::wstring vswhere = base + L"\\Microsoft Visual Studio\\Installer\\vswhere.exe";
+    // 2. Probe vswhere.exe via ProgramFiles / ProgramFiles(x86)
+    wchar_t* pf86 = nullptr;
+    wchar_t* pf64 = nullptr;
+    size_t len86 = 0, len64 = 0;
+    _wdupenv_s(&pf86, &len86, L"ProgramFiles(x86)");
+    _wdupenv_s(&pf64, &len64, L"ProgramFiles");
+    std::wstring base86 = pf86 ? pf86 : L"C:\\Program Files (x86)";
+    std::wstring base64 = pf64 ? pf64 : L"C:\\Program Files";
+    if (pf86) free(pf86);
+    if (pf64) free(pf64);
+
+    std::wstring vswhere = base86 + L"\\Microsoft Visual Studio\\Installer\\vswhere.exe";
     if (GetFileAttributesW(vswhere.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        // fallback common paths
-        const wchar_t* candidates[] = {
-            L"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat",
-            L"C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Auxiliary\\Build\\vcvars64.bat",
-            L"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
+        // Fallback common paths relative to %ProgramFiles% and %ProgramFiles(x86)%
+        std::vector<std::wstring> candidates = {
+            base64 + L"\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base64 + L"\\Microsoft Visual Studio\\18\\Professional\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base64 + L"\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base64 + L"\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base86 + L"\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base64 + L"\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base64 + L"\\Microsoft Visual Studio\\2022\\Professional\\VC\\Auxiliary\\Build\\vcvars64.bat",
+            base86 + L"\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
         };
-        for (const wchar_t* c : candidates) {
-            if (GetFileAttributesW(c) != INVALID_FILE_ATTRIBUTES) {
-                int n = WideCharToMultiByte(CP_UTF8, 0, c, -1, nullptr, 0, nullptr, nullptr);
+        for (const auto& c : candidates) {
+            if (GetFileAttributesW(c.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                int n = WideCharToMultiByte(CP_UTF8, 0, c.c_str(), -1, nullptr, 0, nullptr, nullptr);
                 std::string s(n > 0 ? n - 1 : 0, '\0');
-                if (n > 1) WideCharToMultiByte(CP_UTF8, 0, c, -1, &s[0], n, nullptr, nullptr);
+                if (n > 1) WideCharToMultiByte(CP_UTF8, 0, c.c_str(), -1, &s[0], n, nullptr, nullptr);
                 return s;
             }
         }
         return {};
     }
-
     // vswhere -latest -property installationPath
     SECURITY_ATTRIBUTES sa{};
     sa.nLength = sizeof(sa);

@@ -1,26 +1,65 @@
 @echo off
-title ModelValidator Build Script
+title model-precheck Build Script
 setlocal EnableDelayedExpansion
 
 set PROJECT_DIR=%~dp0
 set BUILD_DIR=%PROJECT_DIR%build
 set DIST_DIR=%PROJECT_DIR%dist
 
-REM Prefer QTDIR env, then local Qt 5.14.2, then legacy Qt 5.11 path
-set "QT_DIR="
-if defined QTDIR if exist "%QTDIR%\bin\windeployqt.exe" set "QT_DIR=%QTDIR%"
-if not defined QT_DIR if exist "D:\Qt\5.14.2\msvc2017_64\bin\windeployqt.exe" set "QT_DIR=D:\Qt\5.14.2\msvc2017_64"
-if not defined QT_DIR if exist "D:\HR\DEV\ThirdParty\Qt5.11\vc140\x64\bin\windeployqt.exe" set "QT_DIR=D:\HR\DEV\ThirdParty\Qt5.11\vc140\x64"
+REM ============================================================
+REM Resolve Qt path dynamically via Environment Variables (NO hardcoded paths)
+REM Supported variables:
+REM   1. %QTDIR% or %QT_DIR%
+REM   2. %ThirdPart% or %THIRDPARTY%
+REM ============================================================
+REM If user requested packaging, forward to package.bat
+if /I "%~1"=="package" (
+    call "%~dp0package.bat" %2 %3
+    exit /b !ERRORLEVEL!
+)
 
-set "PATH=%QT_DIR%\bin;C:\Program Files\CMake\bin;%PATH%"
+REM Check command line parameter first (e.g. build.bat D:\Qt\5.14.2\msvc2017_64 or build.bat 5.11)
+set "QT_DIR="
+if /I "%~1"=="5.11" (
+    if defined ThirdPart if exist "%ThirdPart%\Qt5.11\vc140\x64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.11\vc140\x64"
+    if defined ThirdPart if exist "%ThirdPart%\Qt5.11\msvc2017_64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.11\msvc2017_64"
+    if defined THIRDPARTY if exist "%THIRDPARTY%\Qt5.11\vc140\x64\bin\windeployqt.exe" set "QT_DIR=%THIRDPARTY%\Qt5.11\vc140\x64"
+)
+if /I "%~1"=="5.14" (
+    if defined ThirdPart if exist "%ThirdPart%\Qt5.14\vc143\x64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.14\vc143\x64"
+    if defined ThirdPart if exist "%ThirdPart%\Qt5.14\msvc2017_64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.14\msvc2017_64"
+    if defined THIRDPARTY if exist "%THIRDPARTY%\Qt5.14\vc143\x64\bin\windeployqt.exe" set "QT_DIR=%THIRDPARTY%\Qt5.14\vc143\x64"
+)
+if not "%~1"=="" if exist "%~1\bin\windeployqt.exe" set "QT_DIR=%~1"
+if not defined QT_DIR if defined QTDIR if exist "%QTDIR%\bin\windeployqt.exe" set "QT_DIR=%QTDIR%"
+if not defined QT_DIR if defined Qt5_DIR if exist "%Qt5_DIR%\bin\windeployqt.exe" set "QT_DIR=%Qt5_DIR%"
+
+REM Fallback: search under %ThirdPart% or %THIRDPARTY% environment variable
+if not defined QT_DIR if defined ThirdPart if exist "%ThirdPart%\Qt5.14\vc143\x64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.14\vc143\x64"
+if not defined QT_DIR if defined ThirdPart if exist "%ThirdPart%\Qt5.14\msvc2017_64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.14\msvc2017_64"
+if not defined QT_DIR if defined ThirdPart if exist "%ThirdPart%\Qt5.11\vc140\x64\bin\windeployqt.exe" set "QT_DIR=%ThirdPart%\Qt5.11\vc140\x64"
+
+if not defined QT_DIR if defined THIRDPARTY if exist "%THIRDPARTY%\Qt5.14\vc143\x64\bin\windeployqt.exe" set "QT_DIR=%THIRDPARTY%\Qt5.14\vc143\x64"
+if not defined QT_DIR if defined THIRDPARTY if exist "%THIRDPARTY%\Qt5.14\msvc2017_64\bin\windeployqt.exe" set "QT_DIR=%THIRDPARTY%\Qt5.14\msvc2017_64"
+if not defined QT_DIR if defined THIRDPARTY if exist "%THIRDPARTY%\Qt5.11\vc140\x64\bin\windeployqt.exe" set "QT_DIR=%THIRDPARTY%\Qt5.11\vc140\x64"
+
+REM Ensure CMake is in PATH (check system PATH first, then standard %ProgramFiles%\CMake)
+where cmake.exe >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    if exist "%ProgramFiles%\CMake\bin\cmake.exe" set "PATH=%ProgramFiles%\CMake\bin;!PATH!"
+    if exist "%ProgramFiles(x86)%\CMake\bin\cmake.exe" set "PATH=%ProgramFiles(x86)%\CMake\bin;!PATH!"
+)
+if defined QT_DIR set "PATH=%QT_DIR%\bin;!PATH!"
 
 echo ============================================================
-echo   Model Validator One-Click Build Script
+echo   model-precheck One-Click Build Script
 echo ============================================================
 echo.
 
 if not defined QT_DIR (
-    echo [ERROR] Qt not found. Install Qt 5.x msvc2017_64 or set QTDIR.
+    echo [ERROR] Qt installation not found.
+    echo Please set environment variable QTDIR or ThirdPart.
+    echo Example: set QTDIR=D:\HR\DEV\ThirdParty\Qt5.14\vc143\x64
     pause
     exit /b 1
 )
@@ -28,8 +67,17 @@ if not defined QT_DIR (
 echo Using Qt: %QT_DIR%
 echo.
 
-echo [1/4] Configuring CMake Project (VS2022 x64)...
-cmake -G "Visual Studio 17 2022" -A x64 -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+echo [1/4] Configuring CMake Project (x64)...
+if defined CMAKE_GENERATOR (
+    echo !CMAKE_GENERATOR! | findstr /I "Win64" >nul
+    if !ERRORLEVEL! equ 0 (
+        cmake -G "%CMAKE_GENERATOR%" -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+    ) else (
+        cmake -G "%CMAKE_GENERATOR%" -A x64 -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+    )
+) else (
+    cmake -B "%BUILD_DIR%" -A x64 -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configuration failed!
     pause
@@ -47,7 +95,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [3/4] Deploying Qt Runtime Dependencies...
-"%QT_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%DIST_DIR%\ModelValidator.exe"
+"%QT_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%DIST_DIR%\model-precheck.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Qt runtime deployment failed!
     pause
@@ -78,7 +126,7 @@ if exist "%PREREQ_SRC%\vs_BuildTools.exe" (
 echo.
 echo ============================================================
 echo   Build Completed Successfully!
-echo   Output Executable: %DIST_DIR%\ModelValidator.exe
+echo   Output Executable: %DIST_DIR%\model-precheck.exe
 echo   Env README:        %DIST_DIR%\README.md
 echo ============================================================
 echo.

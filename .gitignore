@@ -2,6 +2,7 @@
 # 1. CMake & Build Outputs
 # ==========================================
 build/
+build_*/
 bin/
 lib/
 dist/
@@ -14,6 +15,8 @@ deploy/prerequisites/*.exe
 # ==========================================
 # 2. Visual Studio & MSVC Temp Files
 # ==========================================
+*.qmlc
+*.jsc
 .vs/
 *.vcxproj.user
 *.sln.docstates

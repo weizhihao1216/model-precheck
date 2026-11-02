@@ -1,6 +1,6 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
-import QtQuick.Layouts 1.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
+import QtQuick.Layouts 1.11
 import "NumberFormat.js" as NumberFormat
 
 // 多对象测试的内嵌结果面板：结论 + 基线/交错坐标对照表（左右两张，逐行一一对应），无需弹出独立窗口。
@@ -70,6 +70,10 @@ Item {
             Rectangle {
                 width: 12
                 height: 12
+                implicitWidth: 12
+                implicitHeight: 12
+                Layout.preferredWidth: 12
+                Layout.preferredHeight: 12
                 radius: 6
                 Layout.alignment: Qt.AlignVCenter
                 color: panel.verdict === "PASS" ? "#1a9c5b" : "#e39a16"

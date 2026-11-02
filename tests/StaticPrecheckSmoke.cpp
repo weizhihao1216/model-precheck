@@ -1,4 +1,4 @@
-// Smoke: run PackageScanner + Header/Lib/PE analyzers on all dist/sample_models
+﻿// Smoke: run PackageScanner + Header/Lib/PE analyzers on all dist/sample_models
 // without Qt UI. Build: cmake --build build --config Release --target StaticPrecheckSmoke
 #include "../src/core/PackageScanner.h"
 #include "../src/core/HeaderAnalyzer.h"
@@ -15,36 +15,36 @@
 #include <vector>
 
 static void AnalyzePackage(const QString& pkgDir, QTextStream& out) {
-    out << "==== " << pkgDir << endl;
+    out << "==== " << pkgDir << QT_ENDL;
     out.flush();
     ModelPackageFiles pkg = PackageScanner::ScanPackageDirectory(qToUtf8(pkgDir));
     out << "  headers=" << pkg.allHeaderFiles.size()
         << " libs=" << pkg.allLibFiles.size()
-        << " dlls=" << pkg.allDllFiles.size() << endl;
+        << " dlls=" << pkg.allDllFiles.size() << QT_ENDL;
     out.flush();
 
     for (const auto& h : pkg.allHeaderFiles) {
-        out << "  HDR " << qUtf8(h) << endl;
+        out << "  HDR " << qUtf8(h) << QT_ENDL;
         out.flush();
         (void)HeaderAnalyzer::AnalyzeHeader(h);
     }
-    out << "  HDR-SET..." << endl;
+    out << "  HDR-SET..." << QT_ENDL;
     out.flush();
     (void)HeaderAnalyzer::AnalyzeHeaderSet(pkg.allHeaderFiles);
 
     for (const auto& l : pkg.allLibFiles) {
-        out << "  LIB " << qUtf8(l) << endl;
+        out << "  LIB " << qUtf8(l) << QT_ENDL;
         out.flush();
         (void)LibAnalyzer::AnalyzeLib(l);
     }
     for (const auto& d : pkg.allDllFiles) {
-        out << "  PE  " << qUtf8(d) << endl;
+        out << "  PE  " << qUtf8(d) << QT_ENDL;
         out.flush();
         std::vector<std::string> search;
         search.push_back(qToUtf8(pkgDir));
         (void)PeAnalyzer::AnalyzeDll(d, search, {});
     }
-    out << "  OK " << QDir(pkgDir).dirName() << endl;
+    out << "  OK " << QDir(pkgDir).dirName() << QT_ENDL;
     out.flush();
 }
 
@@ -55,11 +55,11 @@ int main(int argc, char** argv) {
 
     QString root = QCoreApplication::applicationDirPath() + "/sample_models";
     if (argc >= 2) root = QString::fromLocal8Bit(argv[1]);
-    out << "Root: " << root << endl;
+    out << "Root: " << root << QT_ENDL;
 
     QDir dir(root);
     if (!dir.exists()) {
-        out << "FAIL: root missing" << endl;
+        out << "FAIL: root missing" << QT_ENDL;
         return 2;
     }
 
@@ -76,9 +76,9 @@ int main(int argc, char** argv) {
         allHeaders.insert(allHeaders.end(),
                           pkg.allHeaderFiles.begin(), pkg.allHeaderFiles.end());
     }
-    out << "CROSS headers=" << allHeaders.size() << endl;
+    out << "CROSS headers=" << allHeaders.size() << QT_ENDL;
     out.flush();
     (void)HeaderAnalyzer::AnalyzeHeaderSet(allHeaders);
-    out << "ALL DONE" << endl;
+    out << "ALL DONE" << QT_ENDL;
     return 0;
 }

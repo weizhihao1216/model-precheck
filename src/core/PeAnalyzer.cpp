@@ -1,4 +1,8 @@
 #include "PeAnalyzer.h"
+#include "../utils/QtCompat.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <fstream>
 #include <algorithm>

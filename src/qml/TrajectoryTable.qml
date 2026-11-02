@@ -1,6 +1,6 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
-import QtQuick.Layouts 1.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
+import QtQuick.Layouts 1.11
 
 // 轨迹点经纬度数据表：序号 / 对象 / 经度 / 纬度，可滚动，避免只靠图形判断数据。
 Rectangle {

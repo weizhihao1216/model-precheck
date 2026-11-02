@@ -1,6 +1,6 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
-import QtQuick.Layouts 1.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
+import QtQuick.Layouts 1.11
 import "NumberFormat.js" as NumberFormat
 
 // 判定容差输入：白底描边输入框 + 右侧一对可点击的上下箭头。

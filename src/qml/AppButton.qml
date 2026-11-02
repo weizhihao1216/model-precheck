@@ -1,5 +1,5 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
 
 // 全应用统一的按钮外观：
 //   secondary（默认）：白底 + 青绿描边 + 青绿文字

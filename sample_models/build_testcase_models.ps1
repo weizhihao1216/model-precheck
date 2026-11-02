@@ -1,7 +1,7 @@
-# Generate and build ModelPrecheck sample model testcase packages.
+﻿# Generate and build ModelPrecheck sample model testcase packages.
 $ErrorActionPreference = "Stop"
 $SrcRoot = $PSScriptRoot
-$DistRoot = "D:\Projects\ModelPrecheck\dist\sample_models"
+$DistRoot = if ($env:DIST_DIR) { Join-Path $env:DIST_DIR "sample_models" } else { Join-Path (Split-Path $PSScriptRoot -Parent) "dist\sample_models" }
 $OutRoot = Join-Path $SrcRoot "_build"
 
 function Get-VcVars {
@@ -129,7 +129,7 @@ $ExtraAfter
 #pragma pack(pop)
 
 /*
- * $Name — $Comment
+ * $Name 鈥?$Comment
  */
 ${Name}_API void* Model_Create(void);
 ${Name}_API int Model_Init(void* handle, const WeaponModelParams* params);
@@ -754,28 +754,28 @@ foreach ($m in $models) {
 }
 
 $index = @"
-# sample_models 测试用例包
+# sample_models 娴嬭瘯鐢ㄤ緥鍖?
 
-生成路径：dist/sample_models/<型号>/{include,lib,models}
+鐢熸垚璺緞锛歞ist/sample_models/<鍨嬪彿>/{include,lib,models}
 
-| 问题 | 型号对 | 如何暴露 |
+| 闂 | 鍨嬪彿瀵?| 濡備綍鏆撮湶 |
 |------|--------|----------|
-| Debug 编译失败、Release 成功 | ReleaseOnly_A / ReleaseOnly_B | 包内仅有 Release .lib/.dll，无 Debug |
-| 头文件结构体重名、无命名空间 | HeaderClash_A / HeaderClash_B | 同名 WeaponModelParams/VendorConfig，B 字段顺序不同 |
-| 未做线程安全 | ThreadUnsafe_A / ThreadUnsafe_B | 全局单例状态，多线程 Step 竞态 |
-| 不支持多实例 / 越界 | SingleInstance_A / SingleInstance_B | 仅 1 个槽位，第 2 次 Create 越界 |
-| 共享全局/单例环境或写坏公共数据 | SharedKernel_A / SharedKernel_B | 同名 FileMapping + 越界写 |
-| CRT 不匹配 / 堆隔离 | CrtMd_A (/MD) / CrtMt_B (/MT) | PE 可见不同 CRT；堆分配在 DLL 内 |
-| 无上述问题（对照） | TcPass_A / TcPass_B | 多实例 + 互斥 + /MD + 完整 Debug/Release |
+| Debug 缂栬瘧澶辫触銆丷elease 鎴愬姛 | ReleaseOnly_A / ReleaseOnly_B | 鍖呭唴浠呮湁 Release .lib/.dll锛屾棤 Debug |
+| 澶存枃浠剁粨鏋勪綋閲嶅悕銆佹棤鍛藉悕绌洪棿 | HeaderClash_A / HeaderClash_B | 鍚屽悕 WeaponModelParams/VendorConfig锛孊 瀛楁椤哄簭涓嶅悓 |
+| 鏈仛绾跨▼瀹夊叏 | ThreadUnsafe_A / ThreadUnsafe_B | 鍏ㄥ眬鍗曚緥鐘舵€侊紝澶氱嚎绋?Step 绔炴€?|
+| 涓嶆敮鎸佸瀹炰緥 / 瓒婄晫 | SingleInstance_A / SingleInstance_B | 浠?1 涓Ы浣嶏紝绗?2 娆?Create 瓒婄晫 |
+| 鍏变韩鍏ㄥ眬/鍗曚緥鐜鎴栧啓鍧忓叕鍏辨暟鎹?| SharedKernel_A / SharedKernel_B | 鍚屽悕 FileMapping + 瓒婄晫鍐?|
+| CRT 涓嶅尮閰?/ 鍫嗛殧绂?| CrtMd_A (/MD) / CrtMt_B (/MT) | PE 鍙涓嶅悓 CRT锛涘爢鍒嗛厤鍦?DLL 鍐?|
+| 鏃犱笂杩伴棶棰橈紙瀵圭収锛?| TcPass_A / TcPass_B | 澶氬疄渚?+ 浜掓枼 + /MD + 瀹屾暣 Debug/Release |
 
-## 统一 API
+## 缁熶竴 API
 
 void* Model_Create(void);
 int   Model_Init(void* handle, const WeaponModelParams* params);
-int   Model_Step(void* handle, WeaponModelOutput* output); // 返回 lat/lon 轨迹点
+int   Model_Step(void* handle, WeaponModelOutput* output); // 杩斿洖 lat/lon 杞ㄨ抗鐐?
 void  Model_Destroy(void* handle);
 
-WeaponObject 供 MoCreate/MoInit/MoStep/MoDestroy 集成。
+WeaponObject 渚?MoCreate/MoInit/MoStep/MoDestroy 闆嗘垚銆?
 "@
 Write-Utf8NoBom (Join-Path $DistRoot "README.md") $index
 

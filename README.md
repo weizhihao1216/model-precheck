@@ -1,4 +1,4 @@
-# 第三方武器模型 DLL 集成预检工具 (Model Verification)
+# 第三方武器模型 DLL 集成预检工具 (ModelPrecheck)
 
 本工具面向仿真引擎（如 XSIM）集成前的第三方武器模型 C++ 动态库（DLL）预检：对**规范模型包**做静态检查、受控加载、UserMain / 多对象脚本编译运行，以及性能、并发、轨迹与报告输出。
 
@@ -149,10 +149,10 @@
 
 # 或手动构建
 cmake -G "Visual Studio 17 2022" -A x64 -B build
-cmake --build build --config Release --target ModelValidator
+cmake --build build --config Release --target model-precheck
 ```
 
-可执行文件：`build\Release\ModelValidator.exe`（或 `dist\ModelValidator.exe`）。若 `dist` 被占用无法覆盖，请直接运行 `build\Release` 下新编译产物。
+可执行文件：`build\Release\model-precheck.exe`（或 `dist\model-precheck.exe`）。若 `dist` 被占用无法覆盖，请直接运行 `build\Release` 下新编译产物。
 
 样例模型包：`dist\sample_models\<型号名>\{include,lib,models}\`。
 

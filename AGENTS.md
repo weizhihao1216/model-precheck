@@ -1,12 +1,12 @@
 # AGENTS.md - Antigravity Agent Guidelines & Context
 
-This file provides system context, tech stack rules, and component locations for AI coding assistants working on the **Model Validator (第三方武器模型DLL集成预检工具)** codebase.
+This file provides system context, tech stack rules, and component locations for AI coding assistants working on the **ModelPrecheck (第三方武器模型DLL集成预检工具)** codebase.
 
 ## 1. Core Specification & Architecture
 
 - **Project Purpose**: Validate third-party C++ weapon model DLLs prior to simulation engine integration.
 - **Primary Spec File**: See [`README.md`](file:///d:/HR/Game/ModelPrecheck/README.md) for full requirement mapping (F1-F13).
-- **Environment**: Visual Studio 2017 (MSVC v141 toolset), Qt 5.11 x64 (`D:\HR\DEV\ThirdParty\Qt5.11\vc140\x64`), CMake 3.12+.
+- **Environment**: Visual Studio 2017 (MSVC v141) / VS 2022 (MSVC v143), Qt 5.11 / Qt 5.14+ x64 (resolved dynamically via %QTDIR% or %ThirdPart%), CMake 3.12+.
 
 ## 2. Mandatory Rules
 
@@ -22,13 +22,20 @@ This file provides system context, tech stack rules, and component locations for
 - `FunctionalVerifier`: [`src/core/FunctionalVerifier.h`](file:///d:/HR/Game/ModelPrecheck/src/core/FunctionalVerifier.h) - Trajectory NaN/Inf, bounds, and degree/radian unit checks.
 - `ReportGenerator`: [`src/core/ReportGenerator.h`](file:///d:/HR/Game/ModelPrecheck/src/core/ReportGenerator.h) - HTML/PDF test report generation.
 
-## 4. Build Commands
+## 4. Build & Package Commands
 
 ```powershell
-# One-click build script
+# One-click build script (defaults to best available Qt)
 .\build.bat
 
+# One-click dual-version separate packaging (Qt 5.11 & Qt 5.14)
+.\package.bat
+
+# Or package a single version
+.\package.bat 5.11
+.\package.bat 5.14
+
 # Or manual CMake commands
-cmake -G "Visual Studio 15 2017 Win64" -B build
+cmake -B build -A x64 -DCMAKE_INSTALL_PREFIX=dist
 cmake --build build --config Release --target install
 ```

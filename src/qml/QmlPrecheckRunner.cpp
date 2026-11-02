@@ -30,7 +30,7 @@ std::string u8(const QString& value) { return value.toUtf8().toStdString(); }
 
 QString displayName(const SessionModelSnapshot& model, int index) {
     return model.name.trimmed().isEmpty()
-        ? QStringLiteral("型号 %1").arg(index + 1) : model.name.trimmed();
+        ? QString::fromUtf8("型号 %1").arg(index + 1) : model.name.trimmed();
 }
 
 std::string pickHeader(const ModelPackageFiles& package, const std::string& dllPath) {
@@ -179,7 +179,7 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
     const int runs = qBound(1, snapshot.perfSteps, 100);
     for (int h = 0; h < static_cast<int>(harnesses.size()); ++h) {
         const int modelIndex = indexes[static_cast<size_t>(h)];
-        if (progress) progress(QStringLiteral("性能与轨迹：%1")
+        if (progress) progress(QString::fromUtf8("性能与轨迹：%1")
             .arg(displayName(snapshot.models[static_cast<size_t>(modelIndex)], modelIndex)));
         PerfProfileReport perf;
         PerfProfilerWorker worker(harnesses[static_cast<size_t>(h)].get(), runs,
@@ -240,15 +240,15 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
             }
         }
         // 性能与轨迹阶段结论：日志中可看到每个型号的 PASS / FAIL。
-        if (progress) progress(QStringLiteral("性能与轨迹结果：%1 — 性能 %2 · 轨迹 %3")
+        if (progress) progress(QString::fromUtf8("性能与轨迹结果：%1 — 性能 %2 · 轨迹 %3")
             .arg(displayName(snapshot.models[static_cast<size_t>(modelIndex)], modelIndex))
-            .arg(perf.realtimeVerdict.empty() ? QStringLiteral("未执行")
+            .arg(perf.realtimeVerdict.empty() ? QString::fromUtf8("未执行")
                                               : qstr(perf.realtimeVerdict))
             .arg(trajectory.overallPass ? QStringLiteral("PASS") : QStringLiteral("FAIL")));
     }
 
     if (harnesses.empty()) return;
-    if (progress) progress(QStringLiteral("多线程与多型号并行检查"));
+    if (progress) progress(QString::fromUtf8("多线程与多型号并行检查"));
     ConcurrencyTestConfig multi;
     multi.mode = ConcurrencyTestMode::MultiModel;
     for (int h = 0; h < static_cast<int>(harnesses.size()); ++h) {
@@ -290,12 +290,12 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
     fleet.multiThreadReport = std::move(threads);
 
     // 多线程与多型号并行阶段结论
-    if (progress) progress(QStringLiteral("多线程测试结果 — %1（成功 %2 · 用户失败 %3 · 异常 %4）")
+    if (progress) progress(QString::fromUtf8("多线程测试结果 — %1（成功 %2 · 用户失败 %3 · 异常 %4）")
         .arg(qstr(fleet.multiThreadReport.verdict))
         .arg(fleet.multiThreadReport.successCount)
         .arg(fleet.multiThreadReport.userFailCount)
         .arg(fleet.multiThreadReport.exceptionCount));
-    if (progress) progress(QStringLiteral("多型号并行结果 — %1")
+    if (progress) progress(QString::fromUtf8("多型号并行结果 — %1")
         .arg(qstr(fleet.multiModelReport.verdict)));
 }
 
@@ -305,7 +305,7 @@ void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& s
     std::vector<int> loadedIndexes;
     for (int i = 0; i < static_cast<int>(snapshot.models.size()); ++i) {
         const SessionModelSnapshot& model = snapshot.models[static_cast<size_t>(i)];
-        if (progress) progress(QStringLiteral("单线程多对象：%1").arg(displayName(model, i)));
+        if (progress) progress(QString::fromUtf8("单线程多对象：%1").arg(displayName(model, i)));
         ModelMultiObjectReport named;
         named.modelName = u8(displayName(model, i));
         named.configured = !model.userMainBody.trimmed().isEmpty();
@@ -334,14 +334,14 @@ void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& s
         fleet.multiObjectReports.push_back(std::move(named));
         // 单线程多对象阶段结论：未编译 / 未配置的型号同样给出结论行。
         const ModelMultiObjectReport& stored = fleet.multiObjectReports.back();
-        if (progress) progress(QStringLiteral("单线程多对象结果：%1 — %2")
+        if (progress) progress(QString::fromUtf8("单线程多对象结果：%1 — %2")
             .arg(displayName(model, i))
             .arg(stored.report.verdict.empty()
-                 ? (stored.configured ? QStringLiteral("未执行") : QStringLiteral("未配置"))
+                 ? (stored.configured ? QString::fromUtf8("未执行") : QString::fromUtf8("未配置"))
                  : qstr(stored.report.verdict)));
     }
     if (loaded.size() < 2) return;
-    if (progress) progress(QStringLiteral("跨型号对象交错检查"));
+    if (progress) progress(QString::fromUtf8("跨型号对象交错检查"));
     FleetMultiObjectTestConfig config;
     config.randomSeed = 20260903u;
     for (int h = 0; h < static_cast<int>(loaded.size()); ++h) {
@@ -356,7 +356,7 @@ void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& s
     if (config.models.size() >= 2)
         fleet.fleetMultiObjectReport = FleetSingleThreadMultiObjectTester::Run(config);
     if (progress && config.models.size() >= 2)
-        progress(QStringLiteral("跨型号交错结果 — %1")
+        progress(QString::fromUtf8("跨型号交错结果 — %1")
             .arg(qstr(fleet.fleetMultiObjectReport.verdict)));
 }
 
@@ -435,7 +435,7 @@ void buildPayload(const FleetSessionReport& fleet, QmlPrecheckResult& output) {
             value.insert(QStringLiteral("pass"), header.overallPass);
             value.insert(QStringLiteral("apiStyle"), qstr(header.apiStyleDescription));
             QVariantList headerMessages;
-            headerMessages.append(QStringLiteral("编码 ") + qstr(header.encoding));
+            headerMessages.append(QString::fromUtf8("编码 ") + qstr(header.encoding));
             headerMessages.append(qstr(header.apiStyleDescription));
             value.insert(QStringLiteral("messages"), headerMessages);
             QVariantList functions;
@@ -517,7 +517,7 @@ void buildPayload(const FleetSessionReport& fleet, QmlPrecheckResult& output) {
             value.insert(QStringLiteral("trajectoryNanCount"), dll.trajReport.nanOrInfCount);
             value.insert(QStringLiteral("trajectoryJumpCount"), dll.trajReport.positionJumpCount);
             value.insert(QStringLiteral("trajectoryOutOfBoundsCount"), dll.trajReport.outOfBoundsCount);
-            value.insert(QStringLiteral("trajectoryUnit"), dll.trajReport.isDegreeUnit ? QStringLiteral("经纬度（度）") : QStringLiteral("疑似弧度"));
+            value.insert(QStringLiteral("trajectoryUnit"), dll.trajReport.isDegreeUnit ? QString::fromUtf8("经纬度（度）") : QString::fromUtf8("疑似弧度"));
             value.insert(QStringLiteral("trajectoryUnitLog"), qstr(dll.trajReport.unitCheckLog));
             QVariantList trajectoryMessages;
             for (const std::string& message : dll.trajReport.warnings) trajectoryMessages.append(qstr(message));
@@ -556,12 +556,12 @@ void buildPayload(const FleetSessionReport& fleet, QmlPrecheckResult& output) {
     }
 
     output.concurrency.append(concurrencyMap(
-        QStringLiteral("多型号并行"),
-        QStringLiteral("多个型号在同一进程中并行运行，检查跨 DLL 干扰"),
+        QString::fromUtf8("多型号并行"),
+        QString::fromUtf8("多个型号在同一进程中并行运行，检查跨 DLL 干扰"),
         fleet.multiModelReport));
     output.concurrency.append(concurrencyMap(
-        QStringLiteral("多线程稳定性"),
-        QStringLiteral("每个型号并行执行 UserMain，检查线程安全与异常"),
+        QString::fromUtf8("多线程稳定性"),
+        QString::fromUtf8("每个型号并行执行 UserMain，检查线程安全与异常"),
         fleet.multiThreadReport));
 
     output.headerConflicts.insert(QStringLiteral("overallPass"), fleet.crossModelHeaderConflictReport.overallPass);
@@ -622,7 +622,7 @@ void buildPayload(const FleetSessionReport& fleet, QmlPrecheckResult& output) {
     if (!fleetMo.verdict.empty() || fleetMo.totalObjectCount > 0) {
         QVariantMap row;
         row.insert(QStringLiteral("scope"), QStringLiteral("fleet"));
-        row.insert(QStringLiteral("title"), QStringLiteral("跨型号对象交错"));
+        row.insert(QStringLiteral("title"), QString::fromUtf8("跨型号对象交错"));
         row.insert(QStringLiteral("configured"), true);
         row.insert(QStringLiteral("compiled"), true);
         row.insert(QStringLiteral("verdict"), qstr(fleetMo.verdict));
@@ -662,7 +662,7 @@ QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
                                          const ProgressCallback& progress) {
     QmlPrecheckResult output;
     if (snapshot.models.empty()) {
-        output.error = QStringLiteral("请先添加至少一个型号。");
+        output.error = QString::fromUtf8("请先添加至少一个型号。");
         return output;
     }
     FleetSessionReport fleet;
@@ -670,13 +670,13 @@ QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
     int passedModels = 0;
     for (int i = 0; i < static_cast<int>(snapshot.models.size()); ++i) {
         const SessionModelSnapshot& model = snapshot.models[static_cast<size_t>(i)];
-        if (progress) progress(QStringLiteral("静态检查：%1（%2/%3）")
+        if (progress) progress(QString::fromUtf8("静态检查：%1（%2/%3）")
             .arg(displayName(model, i))
             .arg(i + 1).arg(snapshot.models.size()));
         DualBuildPrecheckReport report = inspectModel(model, i);
         if (report.overallPass) ++passedModels;
         // 每个型号的静态检查结论单独成行，日志中可直接看到 PASS / FAIL。
-        if (progress) progress(QStringLiteral("静态检查结果：%1 — %2")
+        if (progress) progress(QString::fromUtf8("静态检查结果：%1 — %2")
             .arg(displayName(model, i))
             .arg(report.overallPass ? QStringLiteral("PASS") : QStringLiteral("FAIL")));
         fleet.modelReports.push_back(std::move(report));
@@ -704,19 +704,19 @@ QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
     if (fleet.fleetMultiObjectReport.verdict == "FAIL") fleet.overallPass = false;
 
     // 一键预检总体结论：日志中直接给出 PASS / FAIL。
-    if (progress) progress(QStringLiteral("预检总体结论：%1（静态检查通过型号 %2/%3 · 轨迹 %4/%5）")
+    if (progress) progress(QString::fromUtf8("预检总体结论：%1（静态检查通过型号 %2/%3 · 轨迹 %4/%5）")
         .arg(fleet.overallPass ? QStringLiteral("PASS") : QStringLiteral("FAIL"))
         .arg(passedModels).arg(snapshot.models.size())
         .arg(fleet.trajectoryModelsPassed).arg(fleet.trajectoryModelsTested));
 
-    if (progress) progress(QStringLiteral("正在生成检查报告"));
+    if (progress) progress(QString::fromUtf8("正在生成检查报告"));
     const QString directory = QDir(QCoreApplication::applicationDirPath())
         .filePath(QStringLiteral("session"));
     QDir().mkpath(directory);
     output.reportPath = QDir(directory).filePath(QStringLiteral("last_precheck_report.html"));
     if (!ReportGenerator::SaveFleetReportToFile(
             fleet, u8(QDir::toNativeSeparators(output.reportPath)))) {
-        output.error = QStringLiteral("检查已完成，但报告文件保存失败。");
+        output.error = QString::fromUtf8("检查已完成，但报告文件保存失败。");
     }
     buildPayload(fleet, output);
     return output;

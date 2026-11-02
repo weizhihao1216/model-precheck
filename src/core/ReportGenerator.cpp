@@ -6,7 +6,33 @@
 #include <chrono>
 #include <ctime>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace {
+
+bool WriteTextFile(const std::string& outputPath, const std::string& content) {
+#ifdef _WIN32
+    int len = MultiByteToWideChar(CP_UTF8, 0, outputPath.c_str(), -1, nullptr, 0);
+    if (len > 0) {
+        std::wstring wpath(len, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, outputPath.c_str(), -1, &wpath[0], len);
+        std::ofstream file(wpath.c_str(), std::ios::out | std::ios::trunc);
+        if (file.is_open()) {
+            file << content;
+            return true;
+        }
+    }
+#endif
+    std::ofstream file(outputPath, std::ios::out | std::ios::trunc);
+    if (!file.is_open()) return false;
+    file << content;
+    return true;
+}
 
 /**
  * 把 double 格式化成普通小数文本，避免报告里出现 1e-08 / 1.19e-09 这类科学计数法。
@@ -369,12 +395,7 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
 }
 
 bool ReportGenerator::SaveReportToFile(const CombinedPrecheckReport& report, const std::string& outputPath) {
-    std::string html = GenerateHtml(report);
-    std::ofstream file(outputPath, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) return false;
-    file << html;
-    file.close();
-    return true;
+    return WriteTextFile(outputPath, GenerateHtml(report));
 }
 
 std::string ReportGenerator::GenerateDualBuildHtml(const DualBuildPrecheckReport& dualReport) {
@@ -514,12 +535,7 @@ std::string ReportGenerator::GenerateDualBuildHtml(const DualBuildPrecheckReport
 }
 
 bool ReportGenerator::SaveDualReportToFile(const DualBuildPrecheckReport& dualReport, const std::string& outputPath) {
-    std::string html = GenerateDualBuildHtml(dualReport);
-    std::ofstream file(outputPath, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) return false;
-    file << html;
-    file.close();
-    return true;
+    return WriteTextFile(outputPath, GenerateDualBuildHtml(dualReport));
 }
 
 std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetReport) {
@@ -1069,10 +1085,5 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
 }
 
 bool ReportGenerator::SaveFleetReportToFile(const FleetSessionReport& fleetReport, const std::string& outputPath) {
-    std::string html = GenerateFleetHtml(fleetReport);
-    std::ofstream file(outputPath, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) return false;
-    file << html;
-    file.close();
-    return true;
+    return WriteTextFile(outputPath, GenerateFleetHtml(fleetReport));
 }

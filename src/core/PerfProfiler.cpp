@@ -61,13 +61,13 @@ void PerfProfilerWorker::process() {
     };
 
     if (memoryCapEnabled) {
-        emit logMessage(QStringLiteral(
+        emit logMessage(QString::fromUtf8(
             "INFO: 内存增长上限 %1 MB（按 WorkingSet/PrivateUsage 较大值；超过则提前结束）")
             .arg(maxMemoryDeltaMB, 0, 'f', 0));
     } else {
-        emit logMessage(QStringLiteral("INFO: 未设置内存增长上限（将跑满计划次数）"));
+        emit logMessage(QString::fromUtf8("INFO: 未设置内存增长上限（将跑满计划次数）"));
     }
-    emit logMessage(QStringLiteral("INFO: 单型号压测最长约 %1 秒，超时将提前结束")
+    emit logMessage(QString::fromUtf8("INFO: 单型号压测最长约 %1 秒，超时将提前结束")
         .arg(kMaxWallClockSec, 0, 'f', 0));
 
     for (int i = 0; i < report.totalSteps; ++i) {
@@ -135,7 +135,7 @@ void PerfProfilerWorker::process() {
         const double wallSec = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - wallStart).count();
         if (wallSec >= kMaxWallClockSec) {
-            emit logMessage(QStringLiteral(
+            emit logMessage(QString::fromUtf8(
                 "WARN: 压测已运行 %1 秒，达到单型号时限，提前结束（已完成 %2/%3 次）")
                 .arg(wallSec, 0, 'f', 1)
                 .arg(report.completedSteps)
@@ -177,7 +177,7 @@ void PerfProfilerWorker::process() {
         .arg(report.avgTimeMs, 0, 'f', 4)
         .arg(report.memoryDeltaMB, 0, 'f', 2)
         .arg(report.memoryLeakRateMBPer10k, 0, 'f', 2)
-        .arg(report.abortedDueToMemory ? QStringLiteral("（因内存提前中止）") : QString())
+        .arg(report.abortedDueToMemory ? QString::fromUtf8("（因内存提前中止）") : QString())
         .arg(qUtf8(report.realtimeVerdict)));
 
     emit finished(report);

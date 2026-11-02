@@ -265,7 +265,7 @@ InterfaceHeaderSchema InterfaceSchemaAnalyzer::Analyze(
             !match.captured(3).isEmpty() ? match.captured(3) : match.captured(1));
         structure.pack = currentPack;
         const QString body = match.captured(2);
-        for (const QString& rawField : body.split(';', Qt::SkipEmptyParts)) {
+        for (const QString& rawField : body.split(';', QT_SKIP_EMPTY_PARTS)) {
             QString fieldText = rawField.trimmed();
             if (fieldText.isEmpty() || fieldText.contains('(')
                 || fieldText.contains('{')) continue;

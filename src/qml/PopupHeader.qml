@@ -1,6 +1,6 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
-import QtQuick.Layouts 1.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
+import QtQuick.Layouts 1.11
 
 // 统一弹框标题栏：左侧标题+副标题，右侧可选徽章+关闭按钮
 // 所有弹框必须使用本组件，保证关闭按钮位置与样式完全一致

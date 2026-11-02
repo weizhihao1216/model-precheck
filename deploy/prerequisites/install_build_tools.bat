@@ -27,7 +27,7 @@ REM --wait: 等安装结束再返回；--passive: 进度条界面，少交互
 set ERR=%ERRORLEVEL%
 echo.
 if %ERR% equ 0 (
-    echo [OK] 安装流程已结束。请重新打开 ModelValidator 后再试编译。
+    echo [OK] 安装流程已结束。请重新打开 model-precheck 后再试编译。
 ) else (
     echo [WARN] 安装程序退出码: %ERR%
     echo 若已取消或失败，可手动双击 vs_BuildTools.exe，勾选「使用 C++ 的桌面开发」。

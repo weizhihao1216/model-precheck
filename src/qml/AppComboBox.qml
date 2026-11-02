@@ -1,5 +1,5 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
 
 // 全应用统一的下拉框外观：白底描边 + 展开列表（普通/高亮状态都清晰可读、行距紧凑）。
 // 实例若自行提供 contentItem / indicator / delegate / popup，则按实例的写法渲染。

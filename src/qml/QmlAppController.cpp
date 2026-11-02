@@ -40,14 +40,14 @@
 namespace {
 
 bool IsCompiled(const SessionModelSnapshot& model) {
-    return model.status == QStringLiteral("已加载")
+    return model.status == QString::fromUtf8("已加载")
         || (!model.lastUserHarnessDll.isEmpty()
             && QFileInfo::exists(model.lastUserHarnessDll));
 }
 
 QString DisplayName(const SessionModelSnapshot& model, int index) {
     const QString name = model.name.trimmed();
-    return name.isEmpty() ? QStringLiteral("型号 %1").arg(index + 1) : name;
+    return name.isEmpty() ? QString::fromUtf8("型号 %1").arg(index + 1) : name;
 }
 
 // 取编译日志最后一行非空内容作为状态栏的一句话结论
@@ -59,7 +59,7 @@ QString LastLogLine(const QString& log) {
         if (!line.isEmpty())
             return line;
     }
-    return QStringLiteral("请检查模型包和 UserMain 代码。");
+    return QString::fromUtf8("请检查模型包和 UserMain 代码。");
 }
 
 // 日志里那条 CMD: 命令行有上千字符，会把真正的报错挤到屏幕外；
@@ -109,36 +109,36 @@ QVariantList EnrichResultItems(const QVariantList& items) {
     for (const QVariant& value : items) {
         QVariantMap row = value.toMap();
         const QString id = row.value(QStringLiteral("id")).toString();
-        QString category = QStringLiteral("其他检查");
+        QString category = QString::fromUtf8("其他检查");
         if (id == QStringLiteral("header") || id == QStringLiteral("header_conflict"))
-            category = QStringLiteral("接口与头文件");
+            category = QString::fromUtf8("接口与头文件");
         else if (id == QStringLiteral("lib") || id == QStringLiteral("dll_pe")
                  || id == QStringLiteral("build_config") || id == QStringLiteral("dll_load"))
-            category = QStringLiteral("模型包与依赖");
+            category = QString::fromUtf8("模型包与依赖");
         else if (id == QStringLiteral("perf") || id == QStringLiteral("memory")
                  || id == QStringLiteral("trajectory"))
-            category = QStringLiteral("性能与运行");
+            category = QString::fromUtf8("性能与运行");
         else if (id == QStringLiteral("multimodel") || id == QStringLiteral("multithread")
                  || id == QStringLiteral("multiobject"))
-            category = QStringLiteral("并发与隔离");
+            category = QString::fromUtf8("并发与隔离");
         row.insert(QStringLiteral("category"), category);
 
         const QString state = row.value(QStringLiteral("state")).toString();
-        if (state == QStringLiteral("未通过")) {
-            row.insert(QStringLiteral("priority"), QStringLiteral("高"));
+        if (state == QString::fromUtf8("未通过")) {
+            row.insert(QStringLiteral("priority"), QString::fromUtf8("高"));
             row.insert(QStringLiteral("suggestion"),
-                       QStringLiteral("建议先修复此项，再重新执行一键预检。"));
-        } else if (state == QStringLiteral("警告")) {
-            row.insert(QStringLiteral("priority"), QStringLiteral("中"));
+                       QString::fromUtf8("建议先修复此项，再重新执行一键预检。"));
+        } else if (state == QString::fromUtf8("警告")) {
+            row.insert(QStringLiteral("priority"), QString::fromUtf8("中"));
             row.insert(QStringLiteral("suggestion"),
-                       QStringLiteral("建议确认使用场景是否可接受该风险。"));
-        } else if (state == QStringLiteral("通过")) {
-            row.insert(QStringLiteral("priority"), QStringLiteral("无"));
-            row.insert(QStringLiteral("suggestion"), QStringLiteral("无需处理。"));
+                       QString::fromUtf8("建议确认使用场景是否可接受该风险。"));
+        } else if (state == QString::fromUtf8("通过")) {
+            row.insert(QStringLiteral("priority"), QString::fromUtf8("无"));
+            row.insert(QStringLiteral("suggestion"), QString::fromUtf8("无需处理。"));
         } else {
-            row.insert(QStringLiteral("priority"), QStringLiteral("待检查"));
+            row.insert(QStringLiteral("priority"), QString::fromUtf8("待检查"));
             row.insert(QStringLiteral("suggestion"),
-                       QStringLiteral("满足检查条件后重新执行一键预检。"));
+                       QString::fromUtf8("满足检查条件后重新执行一键预检。"));
         }
         enriched.append(row);
     }
@@ -253,14 +253,14 @@ void QmlAppController::rebuildDashboardFromSnapshot() {
         QVariantMap row;
         row.insert(QStringLiteral("name"), DisplayName(model, i));
         row.insert(QStringLiteral("packageReady"), hasPackage);
-        row.insert(QStringLiteral("packageText"), hasPackage ? QStringLiteral("已就绪")
-                                                               : QStringLiteral("未选择"));
+        row.insert(QStringLiteral("packageText"), hasPackage ? QString::fromUtf8("已就绪")
+                                                               : QString::fromUtf8("未选择"));
         row.insert(QStringLiteral("userMainReady"), hasUserMain);
-        row.insert(QStringLiteral("userMainText"), hasUserMain ? QStringLiteral("已配置")
-                                                                 : QStringLiteral("未配置"));
+        row.insert(QStringLiteral("userMainText"), hasUserMain ? QString::fromUtf8("已配置")
+                                                                 : QString::fromUtf8("未配置"));
         row.insert(QStringLiteral("compiled"), compiled);
-        row.insert(QStringLiteral("compileText"), compiled ? QStringLiteral("已完成")
-                                                             : QStringLiteral("待编译"));
+        row.insert(QStringLiteral("compileText"), compiled ? QString::fromUtf8("已完成")
+                                                             : QString::fromUtf8("待编译"));
         row.insert(QStringLiteral("instanceCount"), qBound(1, model.instanceCount, 64));
         row.insert(QStringLiteral("index"), i);
         m_models.append(row);
@@ -271,17 +271,17 @@ void QmlAppController::rebuildDashboardFromSnapshot() {
         : 0;
 
     if (m_snapshot.models.empty()) {
-        m_nextActionTitle = QStringLiteral("添加第一个型号");
-        m_nextActionDetail = QStringLiteral("添加型号并选择模型包后，即可开始配置和编译。");
+        m_nextActionTitle = QString::fromUtf8("添加第一个型号");
+        m_nextActionDetail = QString::fromUtf8("添加型号并选择模型包后，即可开始配置和编译。");
     } else if (firstPending >= 0) {
         const QString name = DisplayName(m_snapshot.models[static_cast<size_t>(firstPending)],
                                          firstPending);
-        m_nextActionTitle = QStringLiteral("编译 %1 后即可开始一键预检").arg(name);
-        m_nextActionDetail = QStringLiteral("当前共有 %1 个型号，仍有 %2 个型号需要完成配置或编译。")
+        m_nextActionTitle = QString::fromUtf8("编译 %1 后即可开始一键预检").arg(name);
+        m_nextActionDetail = QString::fromUtf8("当前共有 %1 个型号，仍有 %2 个型号需要完成配置或编译。")
             .arg(m_snapshot.models.size()).arg(m_snapshot.models.size() - m_compiledCount);
     } else {
-        m_nextActionTitle = QStringLiteral("所有型号均已就绪");
-        m_nextActionDetail = QStringLiteral("现在可以执行一键预检并生成完整检查报告。");
+        m_nextActionTitle = QString::fromUtf8("所有型号均已就绪");
+        m_nextActionDetail = QString::fromUtf8("现在可以执行一键预检并生成完整检查报告。");
     }
 
     if (m_selectedModelIndex >= static_cast<int>(m_snapshot.models.size()))
@@ -391,16 +391,16 @@ QVariantList QmlAppController::selectedPackageContents() const {
             row.insert(QStringLiteral("path"), path);
             row.insert(QStringLiteral("name"), QDir(root).relativeFilePath(path));
             row.insert(QStringLiteral("selected"),
-                       kind == QStringLiteral("头文件") && model->headerPaths.contains(path));
+                       kind == QString::fromUtf8("头文件") && model->headerPaths.contains(path));
             const bool debug = debugFiles
                 && std::find(debugFiles->begin(), debugFiles->end(), file) != debugFiles->end();
             row.insert(QStringLiteral("configuration"),
-                       kind == QStringLiteral("头文件") ? QString() :
+                       kind == QString::fromUtf8("头文件") ? QString() :
                        (debug ? QStringLiteral("Debug") : QStringLiteral("Release")));
             result.append(row);
         }
     };
-    appendFiles(scanned.allHeaderFiles, QStringLiteral("头文件"),
+    appendFiles(scanned.allHeaderFiles, QString::fromUtf8("头文件"),
                 QString::fromUtf8(scanned.includeDir.c_str()), nullptr);
     appendFiles(scanned.allLibFiles, QStringLiteral("LIB"),
                 QString::fromUtf8(scanned.libDir.c_str()), &scanned.debugLibFiles);
@@ -419,10 +419,10 @@ bool QmlAppController::selectedPackageLayoutValid() const {
 QString QmlAppController::selectedPackageSummary() const {
     const auto* model = selectedSnapshotModel();
     if (!model || model->packageDir.trimmed().isEmpty())
-        return QStringLiteral("尚未选择模型包");
+        return QString::fromUtf8("尚未选择模型包");
     const ModelPackageFiles scanned = PackageScanner::ScanPackageDirectory(
         model->packageDir.toUtf8().toStdString());
-    return QStringLiteral("头文件 %1（已选 %2） · LIB %3 · DLL %4 · Release %5/%6 · Debug %7/%8")
+    return QString::fromUtf8("头文件 %1（已选 %2） · LIB %3 · DLL %4 · Release %5/%6 · Debug %7/%8")
         .arg(scanned.allHeaderFiles.size()).arg(model->headerPaths.size())
         .arg(scanned.allLibFiles.size()).arg(scanned.allDllFiles.size())
         .arg(scanned.releaseDllFiles.size()).arg(scanned.releaseLibFiles.size())
@@ -489,7 +489,7 @@ bool QmlAppController::saveSnapshot() {
     const bool saved = SessionStore::Save(m_snapshot, &error);
     m_hasSnapshot = saved;
     if (!saved)
-        m_configurationMessage = QStringLiteral("保存失败：%1").arg(error);
+        m_configurationMessage = QString::fromUtf8("保存失败：%1").arg(error);
     return saved;
 }
 
@@ -500,7 +500,7 @@ void QmlAppController::saveRuntimeSettings(int perfSteps, double perfHz,
     m_snapshot.perfMemCapMB = qBound(0, perfMemCapMB, 65536);
     m_snapshot.threadCount = qBound(1, threadCount, 64);
     m_configurationMessage = saveSnapshot()
-        ? QStringLiteral("运行参数已保存，将在下一次预检中生效。")
+        ? QString::fromUtf8("运行参数已保存，将在下一次预检中生效。")
         : m_configurationMessage;
     emit settingsChanged();
     emit modelDetailsChanged();
@@ -512,7 +512,7 @@ void QmlAppController::resetRuntimeSettings() {
     m_snapshot.perfMemCapMB = 256;
     m_snapshot.threadCount = 4;
     m_configurationMessage = saveSnapshot()
-        ? QStringLiteral("运行参数已恢复为推荐值。")
+        ? QString::fromUtf8("运行参数已恢复为推荐值。")
         : m_configurationMessage;
     emit settingsChanged();
     emit modelDetailsChanged();
@@ -533,13 +533,13 @@ bool QmlAppController::prepareSpecialtyHarness() {
         return false;
     const SessionModelSnapshot* model = selectedSnapshotModel();
     if (!model) {
-        m_specialtyMessage = QStringLiteral("请先选择一个型号。");
+        m_specialtyMessage = QString::fromUtf8("请先选择一个型号。");
         emit specialtyChanged();
         return false;
     }
     if (model->lastUserHarnessDll.trimmed().isEmpty()
         || !QFileInfo::exists(model->lastUserHarnessDll)) {
-        m_specialtyMessage = QStringLiteral("当前型号尚未编译，请先完成 UserMain 编译。");
+        m_specialtyMessage = QString::fromUtf8("当前型号尚未编译，请先完成 UserMain 编译。");
         emit specialtyChanged();
         return false;
     }
@@ -547,7 +547,7 @@ bool QmlAppController::prepareSpecialtyHarness() {
     std::unique_ptr<UserCodeHarness> harness(new UserCodeHarness());
     std::string error;
     if (!harness->LoadCompiledDll(model->lastUserHarnessDll.toUtf8().toStdString(), error)) {
-        m_specialtyMessage = QStringLiteral("无法载入已编译代码：%1")
+        m_specialtyMessage = QString::fromUtf8("无法载入已编译代码：%1")
             .arg(QString::fromUtf8(error.c_str()));
         emit specialtyChanged();
         return false;
@@ -568,7 +568,7 @@ void QmlAppController::runSelectedPerformanceTest() {
 
     m_specialtyPerformance.clear();
     m_specialtyBusy = true;
-    m_specialtyMessage = QStringLiteral("正在对“%1”执行 %2 次性能压测…")
+    m_specialtyMessage = QString::fromUtf8("正在对“%1”执行 %2 次性能压测…")
         .arg(selectedModelName()).arg(perfSteps());
     emit specialtyChanged();
 
@@ -586,7 +586,7 @@ void QmlAppController::runSelectedPerformanceTest() {
     connect(worker, &PerfProfilerWorker::progressUpdated, this,
             [this](int current, int total, double, double memoryMB) {
         if (current == total || current % qMax(1, total / 20) == 0) {
-            m_specialtyMessage = QStringLiteral("性能压测 %1/%2 · 工作集 %3 MB")
+            m_specialtyMessage = QString::fromUtf8("性能压测 %1/%2 · 工作集 %3 MB")
                 .arg(current).arg(total).arg(memoryMB, 0, 'f', 1);
             emit specialtyChanged();
         }
@@ -616,10 +616,10 @@ void QmlAppController::runSelectedPerformanceTest() {
         result.insert(QStringLiteral("perfSamples"), samples);
         result.insert(QStringLiteral("trajectory"), m_specialtyTrajectory);
         result.insert(QStringLiteral("trajectoryMessages"), QVariantList());
-        result.insert(QStringLiteral("configuration"), QStringLiteral("专项性能压测"));
+        result.insert(QStringLiteral("configuration"), QString::fromUtf8("专项性能压测"));
         result.insert(QStringLiteral("name"), selectedModelName());
         m_specialtyPerformance = result;
-        m_specialtyMessage = QStringLiteral("性能压测完成：%1，平均 %2 ms，最大 %3 ms。")
+        m_specialtyMessage = QString::fromUtf8("性能压测完成：%1，平均 %2 ms，最大 %3 ms。")
             .arg(QString::fromStdString(report.realtimeVerdict))
             .arg(report.avgTimeMs, 0, 'f', 4)
             .arg(report.maxTimeMs, 0, 'f', 4);
@@ -644,7 +644,7 @@ void QmlAppController::runSelectedTrajectoryTest() {
     if (!prepareSpecialtyHarness()) return;
     m_specialtyBusy = true;
     m_specialtyTrajectory.clear();
-    m_specialtyMessage = QStringLiteral("正在试跑“%1”并采集轨迹…")
+    m_specialtyMessage = QString::fromUtf8("正在试跑“%1”并采集轨迹…")
         .arg(selectedModelName());
     emit specialtyChanged();
 
@@ -668,16 +668,16 @@ void QmlAppController::runSelectedTrajectoryTest() {
         m_specialtyTrajectory.append(point);
     }
     if (!captureSupported) {
-        m_specialtyMessage = QStringLiteral("当前编译产物不支持轨迹采集，请重新编译 UserMain。");
+        m_specialtyMessage = QString::fromUtf8("当前编译产物不支持轨迹采集，请重新编译 UserMain。");
     } else if (!ok || seh) {
-        m_specialtyMessage = QStringLiteral("轨迹试跑失败：%1")
-            .arg(error.empty() ? QStringLiteral("运行异常或 SEH")
+        m_specialtyMessage = QString::fromUtf8("轨迹试跑失败：%1")
+            .arg(error.empty() ? QString::fromUtf8("运行异常或 SEH")
                                : QString::fromUtf8(error.c_str()));
     } else if (m_specialtyTrajectory.isEmpty()) {
-        m_specialtyMessage = QStringLiteral(
+        m_specialtyMessage = QString::fromUtf8(
             "未采集到轨迹点，请确认 UserMain 调用了 RecordTrajectoryPoint(out_lat, out_lon)。");
     } else {
-        m_specialtyMessage = QStringLiteral("轨迹采集完成，共 %1 个点，UserMain 返回码 %2。")
+        m_specialtyMessage = QString::fromUtf8("轨迹采集完成，共 %1 个点，UserMain 返回码 %2。")
             .arg(m_specialtyTrajectory.size()).arg(returnCode);
     }
     if (!m_specialtyPerformance.isEmpty()) {
@@ -692,7 +692,7 @@ void QmlAppController::runSelectedStaticChecks() {
     if (m_specialtyBusy) return;
     const SessionModelSnapshot* selected = selectedSnapshotModel();
     if (!selected || selected->packageDir.trimmed().isEmpty()) {
-        m_specialtyMessage = QStringLiteral("请先选择型号并设置模型包路径。");
+        m_specialtyMessage = QString::fromUtf8("请先选择型号并设置模型包路径。");
         emit specialtyChanged();
         return;
     }
@@ -701,7 +701,7 @@ void QmlAppController::runSelectedStaticChecks() {
     const QString modelName = selectedModelName();
     m_specialtyStaticReport.clear();
     m_specialtyBusy = true;
-    m_specialtyMessage = QStringLiteral("正在检查“%1”的头文件、LIB、DLL 与加载能力…")
+    m_specialtyMessage = QString::fromUtf8("正在检查“%1”的头文件、LIB、DLL 与加载能力…")
         .arg(modelName);
     emit specialtyChanged();
 
@@ -812,15 +812,15 @@ void QmlAppController::runSelectedStaticChecks() {
             int boundSymbols = 0;
             int missingSymbols = 0;
             if (isDebug) {
-                loadState = QStringLiteral("跳过：Release 工具不加载 Debug DLL");
+                loadState = QString::fromUtf8("跳过：Release 工具不加载 Debug DLL");
             } else if (!pe.isArchMatch) {
                 loadPass = false;
-                loadState = QStringLiteral("架构不匹配，未加载");
+                loadState = QString::fromUtf8("架构不匹配，未加载");
             } else {
                 DllLoader loader;
                 const LoadResult load = loader.Load(path, loadMapping);
                 loadPass = load.isLoaded;
-                loadState = load.isLoaded ? QStringLiteral("加载成功") : QStringLiteral("加载失败");
+                loadState = load.isLoaded ? QString::fromUtf8("加载成功") : QString::fromUtf8("加载失败");
                 loadError = QString::fromStdString(load.errorLog);
                 boundSymbols = load.boundSymbolCount;
                 missingSymbols = load.missingSymbolCount;
@@ -859,7 +859,7 @@ void QmlAppController::runSelectedStaticChecks() {
 
         QMetaObject::invokeMethod(this, [this, result]() {
             m_specialtyStaticReport = result;
-            m_specialtyMessage = QStringLiteral("模型包单项检查完成：头文件 %1/%2，LIB %3/%4，DLL %5/%6。")
+            m_specialtyMessage = QString::fromUtf8("模型包单项检查完成：头文件 %1/%2，LIB %3/%4，DLL %5/%6。")
                 .arg(result.value(QStringLiteral("headerPassed")).toInt())
                 .arg(result.value(QStringLiteral("headers")).toList().size())
                 .arg(result.value(QStringLiteral("libraryPassed")).toInt())
@@ -885,7 +885,7 @@ void QmlAppController::runSelectedMultiThreadTest() {
     if (!prepareSpecialtyHarness()) return;
     m_specialtyConcurrency.clear();
     m_specialtyBusy = true;
-    m_specialtyMessage = QStringLiteral("正在对“%1”执行 %2 线程稳定性测试…")
+    m_specialtyMessage = QString::fromUtf8("正在对“%1”执行 %2 线程稳定性测试…")
         .arg(selectedModelName()).arg(threadCount());
     emit specialtyChanged();
 
@@ -918,7 +918,7 @@ void QmlAppController::runSelectedMultiThreadTest() {
             workers.append(row);
         }
         QVariantMap result;
-        result.insert(QStringLiteral("title"), QStringLiteral("多线程稳定性 · %1").arg(selectedModelName()));
+        result.insert(QStringLiteral("title"), QString::fromUtf8("多线程稳定性 · %1").arg(selectedModelName()));
         result.insert(QStringLiteral("verdict"), QString::fromStdString(report.verdict));
         result.insert(QStringLiteral("summary"), QString::fromStdString(report.summary));
         result.insert(QStringLiteral("workerCount"), report.workerCount);
@@ -927,7 +927,7 @@ void QmlAppController::runSelectedMultiThreadTest() {
         result.insert(QStringLiteral("userFailCount"), report.userFailCount);
         result.insert(QStringLiteral("workers"), workers);
         m_specialtyConcurrency = result;
-        m_specialtyMessage = QStringLiteral("多线程测试完成：%1；成功 %2，异常 %3，返回失败 %4。")
+        m_specialtyMessage = QString::fromUtf8("多线程测试完成：%1；成功 %2，异常 %3，返回失败 %4。")
             .arg(QString::fromStdString(report.verdict))
             .arg(report.successCount).arg(report.exceptionCount).arg(report.userFailCount);
         emit specialtyChanged();
@@ -968,7 +968,7 @@ void QmlAppController::runMultiModelParallelTest(const QVariantList& modelIndexe
         std::unique_ptr<UserCodeHarness> harness(new UserCodeHarness());
         std::string error;
         if (!harness->LoadCompiledDll(model.lastUserHarnessDll.toUtf8().toStdString(), error)) {
-            m_specialtyMessage = QStringLiteral("无法载入型号“%1”：%2")
+            m_specialtyMessage = QString::fromUtf8("无法载入型号“%1”：%2")
                 .arg(DisplayName(model, i), QString::fromUtf8(error.c_str()));
             m_specialtyFleetHarnesses.clear();
             emit specialtyChanged();
@@ -985,14 +985,14 @@ void QmlAppController::runMultiModelParallelTest(const QVariantList& modelIndexe
     }
     if (config.models.size() < 2) {
         m_specialtyFleetHarnesses.clear();
-        m_specialtyMessage = QStringLiteral("多型号并行至少需要两个已编译型号。");
+        m_specialtyMessage = QString::fromUtf8("多型号并行至少需要两个已编译型号。");
         emit specialtyChanged();
         return;
     }
 
     m_specialtyConcurrency.clear();
     m_specialtyBusy = true;
-    m_specialtyMessage = QStringLiteral("正在执行 %1 个型号的并行稳定性测试…")
+    m_specialtyMessage = QString::fromUtf8("正在执行 %1 个型号的并行稳定性测试…")
         .arg(config.models.size());
     emit specialtyChanged();
 
@@ -1021,7 +1021,7 @@ void QmlAppController::runMultiModelParallelTest(const QVariantList& modelIndexe
             workers.append(row);
         }
         QVariantMap result;
-        result.insert(QStringLiteral("title"), QStringLiteral("多型号并行测试"));
+        result.insert(QStringLiteral("title"), QString::fromUtf8("多型号并行测试"));
         result.insert(QStringLiteral("verdict"), QString::fromStdString(report.verdict));
         result.insert(QStringLiteral("summary"), QString::fromStdString(report.summary));
         result.insert(QStringLiteral("workerCount"), report.workerCount);
@@ -1031,7 +1031,7 @@ void QmlAppController::runMultiModelParallelTest(const QVariantList& modelIndexe
         result.insert(QStringLiteral("userFailCount"), report.userFailCount);
         result.insert(QStringLiteral("workers"), workers);
         m_specialtyConcurrency = result;
-        m_specialtyMessage = QStringLiteral("多型号并行完成：%1；成功 %2，异常 %3，返回失败 %4。")
+        m_specialtyMessage = QString::fromUtf8("多型号并行完成：%1；成功 %2，异常 %3，返回失败 %4。")
             .arg(QString::fromStdString(report.verdict))
             .arg(report.successCount).arg(report.exceptionCount).arg(report.userFailCount);
         emit specialtyChanged();
@@ -1094,10 +1094,10 @@ void QmlAppController::addModelInQml() {
     model.name = QStringLiteral("model%1").arg(m_snapshot.models.size() + 1);
     model.userMainBody = QString::fromUtf8(UserCodeHarness::DefaultUserMainTemplate().c_str());
     model.randomVars = DefaultRandomVars();
-    model.status = QStringLiteral("未编译");
+    model.status = QString::fromUtf8("未编译");
     m_snapshot.models.push_back(model);
     m_selectedModelIndex = static_cast<int>(m_snapshot.models.size()) - 1;
-    m_configurationMessage = QStringLiteral("已添加型号，请继续选择模型包。");
+    m_configurationMessage = QString::fromUtf8("已添加型号，请继续选择模型包。");
     saveSnapshot();
     rebuildDashboardFromSnapshot();
     emit multiObjectChanged();
@@ -1115,7 +1115,7 @@ void QmlAppController::removeSelectedModel() {
         m_selectedModelIndex = -1;
     else if (m_selectedModelIndex >= static_cast<int>(m_snapshot.models.size()))
         m_selectedModelIndex = static_cast<int>(m_snapshot.models.size()) - 1;
-    m_configurationMessage = QStringLiteral("已移除型号“%1”。").arg(removedName);
+    m_configurationMessage = QString::fromUtf8("已移除型号“%1”。").arg(removedName);
     saveSnapshot();
     rebuildDashboardFromSnapshot();
     emit multiObjectChanged();
@@ -1124,7 +1124,7 @@ void QmlAppController::removeSelectedModel() {
 void QmlAppController::invalidateSelectedCompilation(const QString& message) {
     auto* model = selectedSnapshotModel();
     if (!model) return;
-    model->status = QStringLiteral("未编译");
+    model->status = QString::fromUtf8("未编译");
     model->lastUserHarnessDll.clear();
     m_fleetMultiObjectSelection.remove(m_selectedModelIndex);
     m_configurationMessage = message;
@@ -1156,7 +1156,7 @@ void QmlAppController::addRandomVariable() {
     variable.maxValue = 1.0;
     variable.enabled = true;
     model->randomVars.push_back(variable);
-    invalidateSelectedCompilation(QStringLiteral("已添加随机变量，需要重新编译。"));
+    invalidateSelectedCompilation(QString::fromUtf8("已添加随机变量，需要重新编译。"));
 }
 
 void QmlAppController::updateRandomVariable(int row, bool enabled, const QString& name,
@@ -1170,7 +1170,7 @@ void QmlAppController::updateRandomVariable(int row, bool enabled, const QString
     static const QRegularExpression identifier(
         QStringLiteral("^[A-Za-z_][A-Za-z0-9_]*$"));
     if (!identifier.match(normalizedName).hasMatch()) {
-        m_configurationMessage = QStringLiteral(
+        m_configurationMessage = QString::fromUtf8(
             "变量名只能包含英文字母、数字和下划线，且不能以数字开头。");
         emit modelDetailsChanged();
         return;
@@ -1179,13 +1179,13 @@ void QmlAppController::updateRandomVariable(int row, bool enabled, const QString
         if (i != row
             && QString::fromStdString(model->randomVars[static_cast<size_t>(i)].name)
                    == normalizedName) {
-            m_configurationMessage = QStringLiteral("变量名“%1”已经存在。").arg(normalizedName);
+            m_configurationMessage = QString::fromUtf8("变量名“%1”已经存在。").arg(normalizedName);
             emit modelDetailsChanged();
             return;
         }
     }
     if (minimum > maximum) {
-        m_configurationMessage = QStringLiteral("随机变量的最小值不能大于最大值。");
+        m_configurationMessage = QString::fromUtf8("随机变量的最小值不能大于最大值。");
         emit modelDetailsChanged();
         return;
     }
@@ -1197,7 +1197,7 @@ void QmlAppController::updateRandomVariable(int row, bool enabled, const QString
         ? RandomVarType::Int : RandomVarType::Double;
     variable.minValue = minimum;
     variable.maxValue = maximum;
-    invalidateSelectedCompilation(QStringLiteral("随机变量已保存，需要重新编译。"));
+    invalidateSelectedCompilation(QString::fromUtf8("随机变量已保存，需要重新编译。"));
 }
 
 void QmlAppController::removeRandomVariable(int row) {
@@ -1205,7 +1205,7 @@ void QmlAppController::removeRandomVariable(int row) {
     if (!model || row < 0 || row >= static_cast<int>(model->randomVars.size()))
         return;
     model->randomVars.erase(model->randomVars.begin() + row);
-    invalidateSelectedCompilation(QStringLiteral("已删除随机变量，需要重新编译。"));
+    invalidateSelectedCompilation(QString::fromUtf8("已删除随机变量，需要重新编译。"));
 }
 
 void QmlAppController::browseSelectedPackage() {
@@ -1213,7 +1213,7 @@ void QmlAppController::browseSelectedPackage() {
     if (!model) return;
     const QString selected = QFileDialog::getExistingDirectory(
         nullptr,
-        QStringLiteral("选择型号模型包根目录（须含 include / lib / models）"),
+        QString::fromUtf8("选择型号模型包根目录（须含 include / lib / models）"),
         model->packageDir);
     if (selected.isEmpty()) return;
 
@@ -1228,12 +1228,12 @@ void QmlAppController::browseSelectedPackage() {
     }
     if (model->name.startsWith(QStringLiteral("model")))
         model->name = QFileInfo(packageDir).fileName();
-    model->status = QStringLiteral("未编译");
+    model->status = QString::fromUtf8("未编译");
     model->lastUserHarnessDll.clear();
     m_fleetMultiObjectSelection.remove(m_selectedModelIndex);
     m_configurationMessage = scanned.layoutValid()
-        ? QStringLiteral("模型包结构有效，已选择 %1 个头文件。").arg(model->headerPaths.size())
-        : QStringLiteral("目录已保存，但缺少 include、lib 或 models 子目录。");
+        ? QString::fromUtf8("模型包结构有效，已选择 %1 个头文件。").arg(model->headerPaths.size())
+        : QString::fromUtf8("目录已保存，但缺少 include、lib 或 models 子目录。");
     saveSnapshot();
     rebuildDashboardFromSnapshot();
     emit multiObjectChanged();
@@ -1249,10 +1249,10 @@ void QmlAppController::setHeaderSelected(const QString& path, bool selected) {
     } else {
         model->headerPaths.removeAll(normalized);
     }
-    model->status = QStringLiteral("未编译");
+    model->status = QString::fromUtf8("未编译");
     model->lastUserHarnessDll.clear();
     m_fleetMultiObjectSelection.remove(m_selectedModelIndex);
-    m_configurationMessage = QStringLiteral("头文件选择已更新，需要重新编译相关代码。");
+    m_configurationMessage = QString::fromUtf8("头文件选择已更新，需要重新编译相关代码。");
     saveSnapshot();
     rebuildDashboardFromSnapshot();
 }
@@ -1269,12 +1269,12 @@ void QmlAppController::selectAllPackageHeaders(bool selected) {
                 QString::fromUtf8(header.c_str())));
         }
     }
-    model->status = QStringLiteral("未编译");
+    model->status = QString::fromUtf8("未编译");
     model->lastUserHarnessDll.clear();
     m_fleetMultiObjectSelection.remove(m_selectedModelIndex);
     m_configurationMessage = selected
-        ? QStringLiteral("已选择全部头文件，需要重新编译相关代码。")
-        : QStringLiteral("已取消全部头文件，请至少选择一个用于编译。");
+        ? QString::fromUtf8("已选择全部头文件，需要重新编译相关代码。")
+        : QString::fromUtf8("已取消全部头文件，请至少选择一个用于编译。");
     saveSnapshot();
     rebuildDashboardFromSnapshot();
 }
@@ -1283,14 +1283,14 @@ void QmlAppController::saveSelectedUserMain(const QString& code) {
     auto* model = selectedSnapshotModel();
     if (!model) return;
     if (model->userMainBody == code) {
-        m_configurationMessage = QStringLiteral("代码没有变化。");
+        m_configurationMessage = QString::fromUtf8("代码没有变化。");
         emit modelDetailsChanged();
         return;
     }
     model->userMainBody = code;
-    model->status = QStringLiteral("未编译");
+    model->status = QString::fromUtf8("未编译");
     model->lastUserHarnessDll.clear();
-    m_configurationMessage = QStringLiteral("对象代码已保存，需要重新编译。");
+    m_configurationMessage = QString::fromUtf8("对象代码已保存，需要重新编译。");
     saveSnapshot();
     rebuildDashboardFromSnapshot();
 }
@@ -1330,7 +1330,7 @@ void QmlAppController::saveStepSettings(int steps, double dt) {
     model->multiObjectSteps = qBound(1, steps, 100000);
     model->multiObjectDt = qBound(0.000001, dt, 60.0);
     // 步数与步长在运行期传入 Harness，无需重新编译。
-    m_configurationMessage = QStringLiteral("运行步数已更新为 %1 步 · dt %2，全部测试项共用该设置。")
+    m_configurationMessage = QString::fromUtf8("运行步数已更新为 %1 步 · dt %2，全部测试项共用该设置。")
         .arg(model->multiObjectSteps).arg(model->multiObjectDt);
     saveSnapshot();
     emit modelDetailsChanged();
@@ -1364,7 +1364,7 @@ void QmlAppController::ensureModelsCompiledForPrecheck() {
         ++pending;
     }
     if (pending == 0) {
-        appendLog(QStringLiteral("所有型号对象代码均已编译，跳过编译步骤"));
+        appendLog(QString::fromUtf8("所有型号对象代码均已编译，跳过编译步骤"));
         emit logsChanged();
     }
     int compiled = 0;
@@ -1381,7 +1381,7 @@ void QmlAppController::ensureModelsCompiledForPrecheck() {
         const QString name = DisplayName(model, i);
         if (pending > 0)
             setBusyProgress(0.05 + 0.25 * static_cast<double>(compiled) / pending);
-        m_precheckProgress = QStringLiteral("正在编译 %1（%2/%3）…")
+        m_precheckProgress = QString::fromUtf8("正在编译 %1（%2/%3）…")
             .arg(name).arg(i + 1).arg(m_snapshot.models.size());
         appendLog(m_precheckProgress);
         emit logsChanged();
@@ -1390,13 +1390,13 @@ void QmlAppController::ensureModelsCompiledForPrecheck() {
 
         const CompileResult result = compileSnapshotModel(model, i);
         if (result.success) {
-            model.status = QStringLiteral("已加载");
+            model.status = QString::fromUtf8("已加载");
             model.lastUserHarnessDll = QString::fromUtf8(result.dllPath.c_str());
-            appendLog(QStringLiteral("编译成功：%1").arg(name));
+            appendLog(QString::fromUtf8("编译成功：%1").arg(name));
         } else {
-            model.status = QStringLiteral("编译失败");
+            model.status = QString::fromUtf8("编译失败");
             model.lastUserHarnessDll.clear();
-            appendLog(QStringLiteral("编译失败：%1").arg(name));
+            appendLog(QString::fromUtf8("编译失败：%1").arg(name));
         }
         emit logsChanged();
         ++compiled;
@@ -1404,7 +1404,7 @@ void QmlAppController::ensureModelsCompiledForPrecheck() {
             setBusyProgress(0.05 + 0.25 * static_cast<double>(compiled) / pending);
     }
     if (pending > 0) {
-        appendLog(QStringLiteral("预检前自动编译完成：本次编译 %1 个型号").arg(compiled));
+        appendLog(QString::fromUtf8("预检前自动编译完成：本次编译 %1 个型号").arg(compiled));
         emit logsChanged();
     }
     saveSnapshot();
@@ -1420,13 +1420,13 @@ void QmlAppController::runSelectedMultiObject(
     // 对象代码只需编译一次：与预检、压测、并发共用同一个 DLL。
     if (model->lastUserHarnessDll.isEmpty()
         || !QFileInfo::exists(model->lastUserHarnessDll)) {
-        m_multiObjectMessage = QStringLiteral("当前型号尚未编译，请先在“型号与代码”页保存并编译。");
+        m_multiObjectMessage = QString::fromUtf8("当前型号尚未编译，请先在“型号与代码”页保存并编译。");
         emit multiObjectChanged();
         return;
     }
 
     m_multiObjectBusy = true;
-    m_multiObjectMessage = QStringLiteral("正在执行基线与交错测试…");
+    m_multiObjectMessage = QString::fromUtf8("正在执行基线与交错测试…");
     m_multiObjectResultItems.clear();
     m_multiObjectTrajectories.clear();
     m_multiObjectVerdict.clear();
@@ -1440,7 +1440,7 @@ void QmlAppController::runSelectedMultiObject(
     if (!harness.LoadCompiledDll(
             model->lastUserHarnessDll.toUtf8().toStdString(), loadError)) {
         m_multiObjectBusy = false;
-        m_multiObjectMessage = QStringLiteral("无法加载多对象 Harness：%1")
+        m_multiObjectMessage = QString::fromUtf8("无法加载多对象 Harness：%1")
             .arg(QString::fromUtf8(loadError.c_str()));
         emit multiObjectChanged();
         return;
@@ -1473,8 +1473,8 @@ void QmlAppController::runSelectedMultiObject(
             && object.baselineReturnCode == 0
             && object.interleavedReturnCode == 0
             && object.maxPositionDeviation <= config.tolerance;
-        row.insert(QStringLiteral("state"), passed ? QStringLiteral("通过")
-                                                    : QStringLiteral("异常"));
+        row.insert(QStringLiteral("state"), passed ? QString::fromUtf8("通过")
+                                                    : QString::fromUtf8("异常"));
         m_multiObjectResultItems.append(row);
 
         auto appendSeries = [this, &object](const std::vector<TrajectorySample>& samples,
@@ -1501,7 +1501,7 @@ void QmlAppController::runSelectedMultiObject(
     m_multiObjectMaxDeviation = report.maxPositionDeviation;
     m_multiObjectMaxFrameMs = report.maxFrameTimeMs;
     m_multiObjectMemoryDeltaMB = report.memoryDeltaMB;
-    m_multiObjectMessage = QStringLiteral("测试完成：%1 — %2")
+    m_multiObjectMessage = QString::fromUtf8("测试完成：%1 — %2")
         .arg(m_multiObjectVerdict, m_multiObjectSummary);
     appendLog(m_multiObjectMessage);
     emit logsChanged();
@@ -1559,14 +1559,14 @@ void QmlAppController::runFleetMultiObject(double tolerance, int schedule) {
         std::string error;
         if (!harness->LoadCompiledDll(
                 model.lastUserHarnessDll.toUtf8().toStdString(), error)) {
-            m_multiObjectMessage = QStringLiteral("型号“%1”的对象代码加载失败：%2")
+            m_multiObjectMessage = QString::fromUtf8("型号“%1”的对象代码加载失败：%2")
                 .arg(DisplayName(model, i), QString::fromUtf8(error.c_str()));
             emit multiObjectChanged();
             return;
         }
         harness->SetEnabledRandomVars(model.randomVars);
         if (!harness->SupportsObjectSession()) {
-            m_multiObjectMessage = QStringLiteral(
+            m_multiObjectMessage = QString::fromUtf8(
                 "型号“%1”不支持对象级调度，请重新编译对象代码。")
                 .arg(DisplayName(model, i));
             emit multiObjectChanged();
@@ -1595,13 +1595,13 @@ void QmlAppController::runFleetMultiObject(double tolerance, int schedule) {
     config.stepDt = stepDt;
 
     if (config.models.size() < 2) {
-        m_multiObjectMessage = QStringLiteral("跨型号对象交错至少需要选择两个已编译型号。");
+        m_multiObjectMessage = QString::fromUtf8("跨型号对象交错至少需要选择两个已编译型号。");
         emit multiObjectChanged();
         return;
     }
 
     m_multiObjectBusy = true;
-    m_multiObjectMessage = QStringLiteral("正在执行跨型号对象交错测试…");
+    m_multiObjectMessage = QString::fromUtf8("正在执行跨型号对象交错测试…");
     m_multiObjectResultItems.clear();
     m_multiObjectTrajectories.clear();
     m_multiObjectVerdict.clear();
@@ -1630,8 +1630,8 @@ void QmlAppController::runFleetMultiObject(double tolerance, int schedule) {
             && detail.baselineReturnCode == 0
             && detail.interleavedReturnCode == 0
             && detail.maxPositionDeviation <= config.tolerance;
-        row.insert(QStringLiteral("state"), passed ? QStringLiteral("通过")
-                                                    : QStringLiteral("异常"));
+        row.insert(QStringLiteral("state"), passed ? QString::fromUtf8("通过")
+                                                    : QString::fromUtf8("异常"));
         m_multiObjectResultItems.append(row);
 
         auto appendSeries = [this, &object](const std::vector<TrajectorySample>& samples,
@@ -1660,7 +1660,7 @@ void QmlAppController::runFleetMultiObject(double tolerance, int schedule) {
     m_multiObjectMaxDeviation = report.maxPositionDeviation;
     m_multiObjectMaxFrameMs = report.maxFrameTimeMs;
     m_multiObjectMemoryDeltaMB = report.memoryDeltaMB;
-    m_multiObjectMessage = QStringLiteral("跨型号测试完成：%1 — %2")
+    m_multiObjectMessage = QString::fromUtf8("跨型号测试完成：%1 — %2")
         .arg(m_multiObjectVerdict, m_multiObjectSummary);
     appendLog(m_multiObjectMessage);
     emit logsChanged();
@@ -1685,19 +1685,19 @@ void QmlAppController::compileSelectedModel(const QString& code) {
     if (!model || m_compileBusy) return;
     model->userMainBody = code;
     if (model->packageDir.trimmed().isEmpty() || model->headerPaths.isEmpty()) {
-        m_configurationMessage = QStringLiteral("请先选择包含头文件的有效模型包。");
+        m_configurationMessage = QString::fromUtf8("请先选择包含头文件的有效模型包。");
         emit modelDetailsChanged();
         return;
     }
     if (model->userMainBody.trimmed().isEmpty()) {
-        m_configurationMessage = QStringLiteral("UserMain 代码不能为空。");
+        m_configurationMessage = QString::fromUtf8("UserMain 代码不能为空。");
         emit modelDetailsChanged();
         return;
     }
 
     m_compileBusy = true;
     setBusyProgress(-1.0);  // 单型号编译无法细分进度，使用不确定进度条
-    m_configurationMessage = QStringLiteral("正在编译 %1…").arg(selectedModelName());
+    m_configurationMessage = QString::fromUtf8("正在编译 %1…").arg(selectedModelName());
     appendLog(m_configurationMessage);
     emit compileStateChanged();
     emit modelDetailsChanged();
@@ -1710,17 +1710,17 @@ void QmlAppController::compileSelectedModel(const QString& code) {
         const QString fullLog = QString::fromUtf8(result.log.c_str()).trimmed();
         m_compileLog = ReorderLogForDisplay(fullLog);
         if (result.success) {
-            model->status = QStringLiteral("已加载");
+            model->status = QString::fromUtf8("已加载");
             model->lastUserHarnessDll = QString::fromUtf8(result.dllPath.c_str());
-            m_configurationMessage = QStringLiteral("编译成功，可以返回首页执行预检。");
-            appendLog(QStringLiteral("编译成功：%1").arg(selectedModelName()));
+            m_configurationMessage = QString::fromUtf8("编译成功，可以返回首页执行预检。");
+            appendLog(QString::fromUtf8("编译成功：%1").arg(selectedModelName()));
         } else {
-            model->status = QStringLiteral("编译失败");
+            model->status = QString::fromUtf8("编译失败");
             model->lastUserHarnessDll.clear();
             // 状态栏只放一行结论（日志全文在「随机变量」下方的日志面板里滚动查看），
             // 之前把日志尾部 320 字硬塞进状态栏，多行文本会溢出到按钮上、根本看不清。
-            m_configurationMessage = QStringLiteral("编译失败：%1").arg(LastLogLine(fullLog));
-            appendLog(QStringLiteral("编译失败：%1").arg(selectedModelName()));
+            m_configurationMessage = QString::fromUtf8("编译失败：%1").arg(LastLogLine(fullLog));
+            appendLog(QString::fromUtf8("编译失败：%1").arg(selectedModelName()));
         }
         emit modelDetailsChanged();
     }
@@ -1749,7 +1749,7 @@ void QmlAppController::compileAllModelsInQml(const QString& currentCode) {
     for (int i = 0; i < total; ++i) {
         SessionModelSnapshot& model = m_snapshot.models[static_cast<size_t>(i)];
         const QString name = DisplayName(model, i);
-        m_configurationMessage = QStringLiteral("正在编译 %1（%2/%3）…")
+        m_configurationMessage = QString::fromUtf8("正在编译 %1（%2/%3）…")
             .arg(name).arg(i + 1).arg(m_snapshot.models.size());
         // 按型号推进进度：当前型号开始时占其时间片的 20%，避免进度条长时间不动。
         setBusyProgress((static_cast<double>(i) + 0.2) / total);
@@ -1759,18 +1759,18 @@ void QmlAppController::compileAllModelsInQml(const QString& currentCode) {
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
         if (model.packageDir.trimmed().isEmpty() || model.headerPaths.isEmpty()) {
-            model.status = QStringLiteral("失败:无头文件");
+            model.status = QString::fromUtf8("失败:无头文件");
             model.lastUserHarnessDll.clear();
-            lastFailure = QStringLiteral("%1 尚未选择有效模型包").arg(name);
-            appendLog(QStringLiteral("跳过编译：%1 尚未选择有效模型包").arg(name));
+            lastFailure = QString::fromUtf8("%1 尚未选择有效模型包").arg(name);
+            appendLog(QString::fromUtf8("跳过编译：%1 尚未选择有效模型包").arg(name));
             setBusyProgress(static_cast<double>(i + 1) / total);
             continue;
         }
         if (model.userMainBody.trimmed().isEmpty()) {
-            model.status = QStringLiteral("失败:无UserMain");
+            model.status = QString::fromUtf8("失败:无UserMain");
             model.lastUserHarnessDll.clear();
-            lastFailure = QStringLiteral("%1 的 UserMain 为空").arg(name);
-            appendLog(QStringLiteral("跳过编译：%1 的 UserMain 为空").arg(name));
+            lastFailure = QString::fromUtf8("%1 的 UserMain 为空").arg(name);
+            appendLog(QString::fromUtf8("跳过编译：%1 的 UserMain 为空").arg(name));
             setBusyProgress(static_cast<double>(i + 1) / total);
             continue;
         }
@@ -1780,15 +1780,15 @@ void QmlAppController::compileAllModelsInQml(const QString& currentCode) {
         allLog += QString::fromUtf8(result.log.c_str()).trimmed();
         allLog += QStringLiteral("\n\n");
         if (result.success) {
-            model.status = QStringLiteral("已加载");
+            model.status = QString::fromUtf8("已加载");
             model.lastUserHarnessDll = QString::fromUtf8(result.dllPath.c_str());
             ++succeeded;
-            appendLog(QStringLiteral("编译成功：%1").arg(name));
+            appendLog(QString::fromUtf8("编译成功：%1").arg(name));
         } else {
-            model.status = QStringLiteral("编译失败");
+            model.status = QString::fromUtf8("编译失败");
             model.lastUserHarnessDll.clear();
-            lastFailure = QStringLiteral("%1 编译失败").arg(name);
-            appendLog(QStringLiteral("编译失败：%1").arg(name));
+            lastFailure = QString::fromUtf8("%1 编译失败").arg(name);
+            appendLog(QString::fromUtf8("编译失败：%1").arg(name));
         }
         emit logsChanged();
         setBusyProgress(static_cast<double>(i + 1) / total);
@@ -1796,12 +1796,12 @@ void QmlAppController::compileAllModelsInQml(const QString& currentCode) {
 
     m_compileLog = ReorderLogForDisplay(allLog.trimmed());
     if (succeeded == static_cast<int>(m_snapshot.models.size())) {
-        m_configurationMessage = QStringLiteral("全部 %1 个型号编译成功，可以执行一键预检。")
+        m_configurationMessage = QString::fromUtf8("全部 %1 个型号编译成功，可以执行一键预检。")
             .arg(succeeded);
     } else {
-        m_configurationMessage = QStringLiteral("已编译成功 %1/%2；%3。")
+        m_configurationMessage = QString::fromUtf8("已编译成功 %1/%2；%3。")
             .arg(succeeded).arg(m_snapshot.models.size())
-            .arg(lastFailure.isEmpty() ? QStringLiteral("请检查失败型号") : lastFailure);
+            .arg(lastFailure.isEmpty() ? QString::fromUtf8("请检查失败型号") : lastFailure);
     }
     appendLog(m_configurationMessage);
     emit logsChanged();
@@ -2029,7 +2029,7 @@ void QmlAppController::exportReportAt(int index) {
     QFile source(sourcePath);
     if (!source.open(QIODevice::ReadOnly)) return;
     const QString targetPath = QFileDialog::getSaveFileName(
-        nullptr, QStringLiteral("导出预检报告"),
+        nullptr, QString::fromUtf8("导出预检报告"),
         QFileInfo(sourcePath).fileName(), QStringLiteral("HTML Files (*.html)"));
     if (targetPath.isEmpty()) return;
     QSaveFile target(targetPath);
@@ -2053,7 +2053,7 @@ void QmlAppController::clearLogs() {
 void QmlAppController::exportLogs() {
     if (m_logLines.isEmpty()) return;
     const QString target = QFileDialog::getSaveFileName(
-        nullptr, QStringLiteral("导出运行日志"),
+        nullptr, QString::fromUtf8("导出运行日志"),
         QStringLiteral("ModelPrecheck_Log.txt"),
         QStringLiteral("Text Files (*.txt)"));
     if (target.isEmpty()) return;
@@ -2067,14 +2067,14 @@ void QmlAppController::exportLogs() {
 void QmlAppController::runPrecheck() {
     if (m_precheckRunning) return;
     if (m_snapshot.models.empty()) {
-        m_precheckError = QStringLiteral("请先添加至少一个型号。");
-        m_precheckProgress = QStringLiteral("无法开始预检");
+        m_precheckError = QString::fromUtf8("请先添加至少一个型号。");
+        m_precheckProgress = QString::fromUtf8("无法开始预检");
         emit precheckStateChanged();
         return;
     }
 
     m_precheckRunning = true;
-    m_precheckProgress = QStringLiteral("正在准备一键预检…");
+    m_precheckProgress = QString::fromUtf8("正在准备一键预检…");
     setBusyProgress(0.02);
     m_precheckError.clear();
     m_receivedResultCurrentRun = false;
@@ -2119,15 +2119,15 @@ void QmlAppController::runPrecheck() {
             m_precheckRunning = false;
             setBusyProgress(-1.0);
             if (m_receivedResultCurrentRun) {
-                m_precheckProgress = QStringLiteral("预检完成");
+                m_precheckProgress = QString::fromUtf8("预检完成");
                 m_precheckError = result.error;
                 saveResultSnapshot();
                 archiveCurrentReport();
                 loadReportHistory();
             } else {
-                m_precheckProgress = QStringLiteral("预检未能生成结果");
+                m_precheckProgress = QString::fromUtf8("预检未能生成结果");
                 m_precheckError = result.error.isEmpty()
-                    ? QStringLiteral("本次预检没有生成结果，请检查型号配置。")
+                    ? QString::fromUtf8("本次预检没有生成结果，请检查型号配置。")
                     : result.error;
             }
             emit resultsChanged();
@@ -2148,18 +2148,18 @@ void QmlAppController::openReport() {
         QDesktopServices::openUrl(QUrl::fromLocalFile(m_cachedReportPath));
         return;
     }
-    m_precheckError = QStringLiteral("尚无可打开的预检报告，请先执行一键预检。");
+    m_precheckError = QString::fromUtf8("尚无可打开的预检报告，请先执行一键预检。");
     emit precheckStateChanged();
 }
 
 void QmlAppController::exportReport() {
     if (m_cachedReportPath.isEmpty() || !QFileInfo::exists(m_cachedReportPath)) {
-        m_precheckError = QStringLiteral("尚无可导出的预检报告，请先执行一键预检。");
+        m_precheckError = QString::fromUtf8("尚无可导出的预检报告，请先执行一键预检。");
         emit precheckStateChanged();
         return;
     }
     const QString target = QFileDialog::getSaveFileName(
-        nullptr, QStringLiteral("导出预检报告"),
+        nullptr, QString::fromUtf8("导出预检报告"),
         QStringLiteral("Precheck_Report.html"),
         QStringLiteral("HTML Files (*.html)"));
     if (target.isEmpty()) return;

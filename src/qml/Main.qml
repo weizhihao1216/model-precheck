@@ -2,7 +2,7 @@ import QtQuick 2.11
 import QtQuick.Window 2.11
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
-import QtCharts 2.3
+import QtCharts 2.2
 import "NumberFormat.js" as NumberFormat
 
 ApplicationWindow {
@@ -328,10 +328,12 @@ ApplicationWindow {
 
             ColumnLayout {
                 id: contentColumn
-                width: mainFlick.width - (window.width < 1400 ? 36 : 54)
-                x: (mainFlick.width - width) / 2
+                // 响应式内容宽度：在 2K/4K/宽屏上约束在 1460px 黄金阅读视口并居中，防止卡片过度横向拉伸；
+                // 在 1080p 及小笔记本视口下自适应撑满，保留自然内边距。
+                width: Math.min(1460, Math.max(960, mainFlick.width - (window.width < 1400 ? 36 : 56)))
+                x: Math.max(18, (mainFlick.width - width) / 2)
                 y: 24
-                spacing: 16
+                spacing: 18
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -528,15 +530,34 @@ ApplicationWindow {
                                 }
                             }
 
-                            Text {
+                            Rectangle {
                                 visible: appController.modelCount === 0
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 96
-                                text: qsTr("尚未添加型号\n点击“添加型号”开始配置")
-                                color: window.secondaryInk
-                                font.pixelSize: 14
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                                Layout.preferredHeight: 140
+                                color: "transparent"
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 8
+                                    AppIcon {
+                                        name: "code"
+                                        size: 28
+                                        color: "#94a3b8"
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                    Text {
+                                        text: qsTr("尚未添加被测型号")
+                                        color: window.ink
+                                        font.pixelSize: 15
+                                        font.weight: Font.DemiBold
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                    Text {
+                                        text: qsTr("点击右上角“＋ 添加型号”导入模型包，系统将自动校验规范并生成测试工程")
+                                        color: window.secondaryInk
+                                        font.pixelSize: 13
+                                        Layout.alignment: Qt.AlignHCenter
+                                    }
+                                }
                             }
 
                             Repeater {
@@ -762,25 +783,40 @@ ApplicationWindow {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 48
-                    radius: 7
+                    height: 50
+                    implicitHeight: 50
+                    Layout.preferredHeight: 50
+                    radius: 8
                     color: window.panel
                     border.color: window.line
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        Text { text: "☷"; color: window.secondaryInk; font.pixelSize: 18 }
+                        anchors.leftMargin: 18
+                        anchors.rightMargin: 18
+                        spacing: 12
+                        AppIcon {
+                            name: "report"
+                            size: 18
+                            color: window.secondaryInk
+                            Layout.alignment: Qt.AlignVCenter
+                        }
                         Text {
                             text: appController.logCount > 0
-                                  ? qsTr("运行日志（%1）").arg(appController.logCount)
-                                  : qsTr("运行日志")
+                                  ? qsTr("运行日志（共 %1 条记录）").arg(appController.logCount)
+                                  : qsTr("运行日志（点击展开控制台）")
                             color: window.ink
-                            font.pixelSize: 13
+                            font.pixelSize: 14
                             font.weight: Font.DemiBold
+                            Layout.alignment: Qt.AlignVCenter
                         }
                         Item { Layout.fillWidth: true }
-                        Text { text: "⌄"; color: window.secondaryInk; font.pixelSize: 16 }
+                        Text {
+                            text: qsTr("查看实时输出 ↗")
+                            color: window.teal
+                            font.pixelSize: 13
+                            font.weight: Font.Medium
+                            Layout.alignment: Qt.AlignVCenter
+                        }
                     }
                     MouseArea {
                         anchors.fill: parent
@@ -1215,7 +1251,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: appController.specialtyBusy ? qsTr("● 测试执行中") : qsTr("● 可以开始")
                             color: appController.specialtyBusy ? window.amber : window.green
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                         }
                     }
@@ -1244,7 +1280,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: qsTr("专项测试需要型号已完成 UserMain 编译。")
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             wrapMode: Text.WordWrap
                         }
                         ListView {
@@ -1280,7 +1316,7 @@ ApplicationWindow {
                                         width: parent.width
                                         text: modelData.compiled ? qsTr("✓ 已编译") : qsTr("需要先编译")
                                         color: modelData.compiled ? window.green : window.amber
-                                        font.pixelSize: 9
+                                        font.pixelSize: 12
                                     }
                                 }
                                 AppSpinBox {
@@ -1402,7 +1438,7 @@ ApplicationWindow {
                                                 .arg(appController.specialtyStaticReport.dllPassed || 0)
                                                 .arg((appController.specialtyStaticReport.dlls || []).length)
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         wrapMode: Text.WordWrap
                                     }
                                 }
@@ -1453,7 +1489,7 @@ ApplicationWindow {
                                             Layout.fillHeight: true
                                             text: modelData.detail
                                             color: window.secondaryInk
-                                            font.pixelSize: 10
+                                            font.pixelSize: 12
                                             wrapMode: Text.WordWrap
                                         }
                                         AppButton {
@@ -1520,7 +1556,7 @@ ApplicationWindow {
                                             .arg(Number(appController.specialtyPerformance.memoryDeltaMB || 0).toFixed(2))
                                             .arg(Number(appController.specialtyPerformance.memoryLeakRate || 0).toFixed(2))
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                     }
                                 }
                                 AppButton {
@@ -1556,7 +1592,7 @@ ApplicationWindow {
                                         text: qsTr("已采集 %1 个经纬度点，可在图表中查看完整路径。")
                                             .arg(appController.specialtyTrajectory.length)
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                     }
                                 }
                                 AppButton {
@@ -1600,7 +1636,7 @@ ApplicationWindow {
                                         anchors.centerIn: parent
                                         text: appController.specialtyConcurrency.verdict || "N/A"
                                         color: "white"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         font.weight: Font.Bold
                                     }
                                 }
@@ -1611,7 +1647,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: appController.specialtyConcurrency.summary || ""
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -1699,7 +1735,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: appController.specialtyBusy ? qsTr("执行中") : qsTr("已完成")
                             color: appController.specialtyBusy ? window.amber : window.green
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.Bold
                         }
                     }
@@ -1734,7 +1770,7 @@ ApplicationWindow {
                             visible: !specialtyTestDialog.multiSelection
                             text: qsTr("灰色型号尚未满足当前测试条件。")
                             color: window.secondaryInk
-                            font.pixelSize: 9
+                            font.pixelSize: 12
                             wrapMode: Text.WordWrap
                         }
                         ListView {
@@ -1832,7 +1868,7 @@ ApplicationWindow {
                                            ? qsTr("仅对左侧勾选的型号执行并行测试，各型号实例数可分别设置。")
                                            : qsTr("检查所选型号的头文件、LIB、DLL 依赖、导出和 Release 加载能力。"))))
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             wrapMode: Text.WordWrap
                         }
                         // 本测试项的运行参数（默认值来自「设置 · 一键预检默认值」，此处可为当次测试调整）
@@ -1844,7 +1880,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 visible: specialtyTestDialog.testType === 0
                                 spacing: 3
-                                Text { text: qsTr("压测次数"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("压测次数"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppSpinBox {
                                     id: dialogPerfStepsBox
                                     from: 1
@@ -1859,7 +1895,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 visible: specialtyTestDialog.testType === 0
                                 spacing: 3
-                                Text { text: qsTr("目标频率"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("目标频率"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppComboBox {
                                     id: dialogPerfHzBox
                                     implicitWidth: 118
@@ -1872,7 +1908,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 visible: specialtyTestDialog.testType === 0
                                 spacing: 3
-                                Text { text: qsTr("内存上限 MB"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("内存上限 MB"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppSpinBox {
                                     id: dialogMemCapBox
                                     from: 0
@@ -1887,7 +1923,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 visible: specialtyTestDialog.testType === 2
                                 spacing: 3
-                                Text { text: qsTr("并发线程数"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("并发线程数"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppSpinBox {
                                     id: dialogThreadsBox
                                     from: 1
@@ -1927,7 +1963,7 @@ ApplicationWindow {
                                           ? appController.specialtyMessage
                                           : qsTr("选择型号后点击下方按钮开始测试。")
                                     color: window.ink
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                             }
@@ -2490,10 +2526,10 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: qsTr("运行步数与步长：预检、压测、并发与多对象测试共用，修改后无需重新编译。")
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         wrapMode: Text.WordWrap
                                     }
-                                    Text { text: qsTr("步数"); color: window.secondaryInk; font.pixelSize: 10 }
+                                    Text { text: qsTr("步数"); color: window.secondaryInk; font.pixelSize: 12 }
                                     AppSpinBox {
                                         id: runtimeStepsBox
                                         from: 1
@@ -2503,7 +2539,7 @@ ApplicationWindow {
                                         implicitWidth: 132
                                         implicitHeight: 32
                                     }
-                                    Text { text: qsTr("步长 dt"); color: window.secondaryInk; font.pixelSize: 10 }
+                                    Text { text: qsTr("步长 dt"); color: window.secondaryInk; font.pixelSize: 12 }
                                     AppTextField {
                                         id: runtimeDtField
                                         implicitWidth: 100
@@ -2862,11 +2898,11 @@ ApplicationWindow {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 5
-                            Text { Layout.preferredWidth: 34; text: qsTr("启用"); color: window.secondaryInk; font.pixelSize: 9; horizontalAlignment: Text.AlignHCenter }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 62 : 90; text: qsTr("变量名"); color: window.secondaryInk; font.pixelSize: 9 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 78 : 104; text: qsTr("类型"); color: window.secondaryInk; font.pixelSize: 9 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最小值"); color: window.secondaryInk; font.pixelSize: 9 }
-                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最大值"); color: window.secondaryInk; font.pixelSize: 9 }
+                            Text { Layout.preferredWidth: 34; text: qsTr("启用"); color: window.secondaryInk; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter }
+                            Text { Layout.preferredWidth: window.width < 1400 ? 62 : 90; text: qsTr("变量名"); color: window.secondaryInk; font.pixelSize: 12 }
+                            Text { Layout.preferredWidth: window.width < 1400 ? 78 : 104; text: qsTr("类型"); color: window.secondaryInk; font.pixelSize: 12 }
+                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最小值"); color: window.secondaryInk; font.pixelSize: 12 }
+                            Text { Layout.preferredWidth: window.width < 1400 ? 48 : 64; text: qsTr("最大值"); color: window.secondaryInk; font.pixelSize: 12 }
                             Item { Layout.fillWidth: true }
                             Item { Layout.preferredWidth: 26 }
                         }
@@ -2936,7 +2972,6 @@ ApplicationWindow {
                                                 placeholderText: qsTr("变量名")
                                                 selectByMouse: true
                                                 color: window.ink
-                                                placeholderTextColor: "#8b98a8"
                                                 selectionColor: window.tealPale
                                                 selectedTextColor: window.ink
                                                 font.pixelSize: 11
@@ -3112,7 +3147,7 @@ ApplicationWindow {
                                     Text {
                                         text: qsTr("可选中复制")
                                         color: window.secondaryInk
-                                        font.pixelSize: 9
+                                        font.pixelSize: 12
                                     }
                                 }
                                 ScrollView {
@@ -3131,7 +3166,7 @@ ApplicationWindow {
                                         wrapMode: TextArea.Wrap
                                         color: "#33415c"
                                         font.family: "Consolas"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         background: Rectangle { color: "transparent" }
                                     }
                                 }
@@ -3188,7 +3223,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: appController.selectedPackageLayoutValid ? qsTr("结构有效") : qsTr("结构不完整")
                             color: appController.selectedPackageLayoutValid ? window.green : window.amber
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                         }
                     }
@@ -3311,7 +3346,7 @@ ApplicationWindow {
                                             text: modelData.kind
                                             color: modelData.kind === qsTr("头文件") ? window.tealDark
                                                    : (modelData.kind === "LIB" ? "#5264b0" : window.amber)
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             font.weight: Font.DemiBold
                                         }
                                     }
@@ -3332,7 +3367,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: modelData.path
                                             color: window.secondaryInk
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             elide: Text.ElideMiddle
                                         }
                                     }
@@ -3347,7 +3382,7 @@ ApplicationWindow {
                                             anchors.centerIn: parent
                                             text: modelData.configuration
                                             color: modelData.configuration === "Debug" ? window.red : window.green
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             font.weight: Font.DemiBold
                                         }
                                     }
@@ -3408,7 +3443,7 @@ ApplicationWindow {
                                   ? qsTr("已编译") : qsTr("待编译")
                             color: appController.selectedMultiObjectCompiled
                                    ? window.green : window.amber
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.Bold
                         }
                     }
@@ -3458,7 +3493,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: qsTr("代码、步数与步长在“型号与代码”页设置；本页只设置多对象运行参数。")
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                         }
 
@@ -3493,7 +3528,7 @@ ApplicationWindow {
                                               : qsTr("尚未编译，请先在“型号与代码”页编译")
                                         color: appController.selectedMultiObjectCompiled
                                                ? window.green : window.amber
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                     }
                                 }
                                 AppComboBox {
@@ -3515,7 +3550,7 @@ ApplicationWindow {
                             spacing: 10
                             ColumnLayout {
                                 spacing: 3
-                                Text { text: qsTr("对象数"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("对象数"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppSpinBox {
                                     id: multiObjectCountBox
                                     from: 2
@@ -3528,7 +3563,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 3
-                                Text { text: qsTr("判定容差"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("判定容差"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppToleranceField {
                                     id: multiObjectToleranceField
                                     Layout.fillWidth: true
@@ -3536,7 +3571,7 @@ ApplicationWindow {
                             }
                             ColumnLayout {
                                 spacing: 3
-                                Text { text: qsTr("调度顺序"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("调度顺序"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppComboBox {
                                     id: multiObjectScheduleBox
                                     implicitWidth: 166
@@ -3552,7 +3587,7 @@ ApplicationWindow {
                                   .arg(appController.selectedMultiObjectSteps)
                                   .arg(appController.selectedMultiObjectDt)
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                         }
 
                         AppButton {
@@ -3617,7 +3652,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: qsTr("同一线程中交替推进多个型号的对象，检查跨 DLL 对象级串扰。")
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                         }
                         Flickable {
@@ -3673,13 +3708,13 @@ ApplicationWindow {
                                                           ? qsTr("对象代码已编译")
                                                           : qsTr("请先在“型号与代码”页编译")
                                                     color: modelData.ready ? window.green : window.amber
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 12
                                                 }
                                             }
                                             Text {
                                                 text: qsTr("对象数")
                                                 color: window.secondaryInk
-                                                font.pixelSize: 10
+                                                font.pixelSize: 12
                                                 Layout.alignment: Qt.AlignVCenter
                                             }
                                             AppSpinBox {
@@ -3707,7 +3742,7 @@ ApplicationWindow {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 3
-                                Text { text: qsTr("判定容差"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("判定容差"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppToleranceField {
                                     id: fleetToleranceField
                                     Layout.fillWidth: true
@@ -3715,7 +3750,7 @@ ApplicationWindow {
                             }
                             ColumnLayout {
                                 spacing: 3
-                                Text { text: qsTr("调度顺序"); color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { text: qsTr("调度顺序"); color: window.secondaryInk; font.pixelSize: 12 }
                                 AppComboBox {
                                     id: fleetScheduleBox
                                     implicitWidth: 166
@@ -3731,7 +3766,7 @@ ApplicationWindow {
                                   .arg(appController.selectedMultiObjectSteps)
                                   .arg(appController.selectedMultiObjectDt)
                             color: window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                         }
 
                         AppButton {
@@ -4158,7 +4193,7 @@ ApplicationWindow {
                                     id: compactFilterLabel
                                     text: parent.text
                                     color: resultsPopup.resultFilter === parent.text ? "white" : window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     font.weight: resultsPopup.resultFilter === parent.text ? Font.DemiBold : Font.Normal
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
@@ -4234,7 +4269,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: modelData.reason.length > 0 ? modelData.reason : qsTr("暂无详细说明")
                                             color: window.secondaryInk
-                                            font.pixelSize: 10
+                                            font.pixelSize: 12
                                             wrapMode: Text.WordWrap
                                         }
                                         Text {
@@ -4243,7 +4278,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: qsTr("建议：") + modelData.suggestion
                                             color: window.tealDark
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             wrapMode: Text.WordWrap
                                         }
                                     }
@@ -4383,7 +4418,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             text: modelData.packageDir
                                             color: window.secondaryInk
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             elide: Text.ElideMiddle
                                         }
                                     }
@@ -4429,7 +4464,7 @@ ApplicationWindow {
                                                 anchors.centerIn: parent
                                                 text: modelData.label + "  " + modelData.passed + "/" + modelData.total
                                                 color: modelData.passed === modelData.total ? window.green : window.amber
-                                                font.pixelSize: 10
+                                                font.pixelSize: 12
                                                 font.weight: Font.DemiBold
                                             }
                                         }
@@ -4462,7 +4497,7 @@ ApplicationWindow {
                                                 text: (modelData.messages && modelData.messages.length > 0)
                                                       ? modelData.messages.join("；") : ""
                                                 color: window.secondaryInk
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 elide: Text.ElideRight
                                             }
                                             Rectangle {
@@ -4478,7 +4513,7 @@ ApplicationWindow {
                                                     text: String(modelData.configuration)
                                                     color: String(modelData.configuration) === "Debug"
                                                            ? window.amber : window.tealDark
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 12
                                                     font.weight: Font.DemiBold
                                                 }
                                             }
@@ -4492,7 +4527,7 @@ ApplicationWindow {
                                                     anchors.centerIn: parent
                                                     text: modelData.pass ? qsTr("通过") : qsTr("未通过")
                                                     color: modelData.pass ? window.green : window.red
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 12
                                                     font.weight: Font.DemiBold
                                                 }
                                             }
@@ -4569,7 +4604,7 @@ ApplicationWindow {
                                                 Layout.fillWidth: true
                                                 text: modelData.releaseSummary
                                                 color: window.secondaryInk
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -4593,7 +4628,7 @@ ApplicationWindow {
                                                 Layout.fillWidth: true
                                                 text: modelData.debugSummary
                                                 color: window.secondaryInk
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -4613,7 +4648,7 @@ ApplicationWindow {
                                         visible: modelData.dlls.length > 0
                                         text: qsTr("DLL 检查明细")
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         font.weight: Font.DemiBold
                                     }
                                     Repeater {
@@ -4638,7 +4673,7 @@ ApplicationWindow {
                                                     visible: text.length > 0
                                                     text: modelResultCard.dllGroupLabel(index)
                                                     color: text === "Debug" ? window.amber : window.tealDark
-                                                    font.pixelSize: 10
+                                                    font.pixelSize: 12
                                                     font.weight: Font.DemiBold
                                                 }
                                                 RowLayout {
@@ -4659,7 +4694,7 @@ ApplicationWindow {
                                                                  || modelResultCard.trajectoryItem
                                                         text: modelData.configuration + " · " + modelData.architecture
                                                         color: window.secondaryInk
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: 12
                                                     }
                                                     Rectangle {
                                                         visible: modelResultCard.dllIfaceItem
@@ -4672,7 +4707,7 @@ ApplicationWindow {
                                                             anchors.centerIn: parent
                                                             text: modelData.pePass ? qsTr("PE通过") : qsTr("PE失败")
                                                             color: modelData.pePass ? window.green : window.red
-                                                            font.pixelSize: 9
+                                                            font.pixelSize: 12
                                                             font.weight: Font.DemiBold
                                                         }
                                                     }
@@ -4691,7 +4726,7 @@ ApplicationWindow {
                                                                   : (modelData.loaded ? qsTr("加载成功") : qsTr("加载失败"))
                                                             color: modelData.configuration === "Debug" || modelData.loaded
                                                                    ? window.green : window.red
-                                                            font.pixelSize: 9
+                                                            font.pixelSize: 12
                                                             font.weight: Font.DemiBold
                                                         }
                                                     }
@@ -4703,7 +4738,7 @@ ApplicationWindow {
                                                         Layout.fillWidth: true
                                                         text: modelData.crt
                                                         color: window.secondaryInk
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: 12
                                                         elide: Text.ElideRight
                                                     }
                                                     AppButton {
@@ -4748,14 +4783,14 @@ ApplicationWindow {
                                                         text: qsTr("轨迹点 %1").arg(modelData.trajectory
                                                                                    ? modelData.trajectory.length : 0)
                                                         color: window.secondaryInk
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: 12
                                                     }
                                                     Text {
                                                         visible: modelResultCard.perfItem || modelResultCard.memoryItem
                                                         text: qsTr("性能采样 %1").arg(modelData.perfSamples
                                                                                     ? modelData.perfSamples.length : 0)
                                                         color: window.secondaryInk
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: 12
                                                     }
                                                 }
                                             }
@@ -4838,7 +4873,7 @@ ApplicationWindow {
                                                 anchors.centerIn: parent
                                                 text: modelData.label + "  " + modelData.count
                                                 color: modelData.count === 0 ? window.green : window.amber
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 font.weight: Font.DemiBold
                                             }
                                         }
@@ -4905,7 +4940,7 @@ ApplicationWindow {
                                                 text: modelData.verdict.length > 0 ? modelData.verdict : qsTr("未执行")
                                                 color: modelData.verdict === "PASS" ? window.green
                                                        : (modelData.verdict === "FAIL" ? window.red : window.amber)
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 font.weight: Font.Bold
                                             }
                                         }
@@ -4914,14 +4949,14 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: modelData.description
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         wrapMode: Text.WordWrap
                                     }
                                     Text {
                                         Layout.fillWidth: true
                                         text: modelData.summary.length > 0 ? modelData.summary : qsTr("本次未生成执行结果")
                                         color: window.ink
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         elide: Text.ElideRight
                                     }
                                     RowLayout {
@@ -4934,7 +4969,7 @@ ApplicationWindow {
                                                   .arg(modelData.exceptionCount)
                                                   .arg(modelData.userFailCount)
                                             color: window.secondaryInk
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                         }
                                         AppButton {
                                             text: qsTr("线程明细")
@@ -5003,7 +5038,7 @@ ApplicationWindow {
                                                 text: modelData.verdict.length > 0 ? modelData.verdict : qsTr("未执行")
                                                 color: modelData.verdict === "PASS" ? window.green
                                                        : (modelData.verdict === "FAIL" ? window.red : window.amber)
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 font.weight: Font.Bold
                                             }
                                         }
@@ -5014,7 +5049,7 @@ ApplicationWindow {
                                               : (!modelData.configured ? qsTr("尚未配置多对象代码")
                                                  : qsTr("尚未执行多对象测试"))
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         elide: Text.ElideRight
                                     }
                                     Text {
@@ -5026,7 +5061,7 @@ ApplicationWindow {
                                               .arg(modelData.interferenceCount)
                                               .arg(modelData.exceptionCount)
                                         color: window.secondaryInk
-                                        font.pixelSize: 9
+                                        font.pixelSize: 12
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -5037,7 +5072,7 @@ ApplicationWindow {
                                                   .arg(Number(modelData.maxFrameMs || 0).toFixed(3))
                                                   .arg(Number(modelData.memoryDeltaMB || 0).toFixed(2))
                                             color: window.secondaryInk
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             elide: Text.ElideRight
                                             MouseArea {
                                                 anchors.fill: parent
@@ -5165,7 +5200,7 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     text: modelData.category + qsTr(" · 优先级：") + modelData.priority
                                     color: window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                                 ColumnLayout {
@@ -5194,7 +5229,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         text: qsTr("建议：") + modelData.suggestion
                                         color: window.tealDark
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         wrapMode: Text.WordWrap
                                     }
                                 }
@@ -5257,7 +5292,7 @@ ApplicationWindow {
                               .arg((staticModelDetailPopup.detail.declaredOnly || []).length)
                               .arg((staticModelDetailPopup.detail.exportedOnly || []).length)
                         color: window.secondaryInk
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                     }
                 }
             }
@@ -5298,7 +5333,7 @@ ApplicationWindow {
                                           ? (staticModelDetailPopup.detail.headers || []).length
                                           : (staticModelDetailPopup.detail.libraries || []).length)
                                     color: window.secondaryInk
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                 }
                             }
                             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: window.line }
@@ -5329,7 +5364,7 @@ ApplicationWindow {
                                                         Layout.fillWidth: true
                                                         text: modelData.name
                                                         color: window.ink
-                                                        font.pixelSize: 10
+                                                        font.pixelSize: 12
                                                         font.weight: Font.DemiBold
                                                         elide: Text.ElideMiddle
                                                         ToolTip.visible: staticFileMouse.containsMouse
@@ -5339,7 +5374,7 @@ ApplicationWindow {
                                                     Text {
                                                         text: modelData.pass ? qsTr("通过") : qsTr("需处理")
                                                         color: modelData.pass ? window.green : window.red
-                                                        font.pixelSize: 9
+                                                        font.pixelSize: 12
                                                         font.weight: Font.DemiBold
                                                     }
                                                 }
@@ -5357,7 +5392,7 @@ ApplicationWindow {
                                                             .arg((modelData.foundSymbols || []).length)
                                                             .arg((modelData.missingSymbols || []).length)
                                                     color: window.secondaryInk
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 12
                                                     elide: Text.ElideRight
                                                 }
                                                 Text {
@@ -5366,7 +5401,7 @@ ApplicationWindow {
                                                     Layout.fillWidth: true
                                                     text: qsTr("缺失：") + (modelData.missingSymbols || []).join("、")
                                                     color: window.red
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 12
                                                     elide: Text.ElideRight
                                                 }
                                             }
@@ -5380,7 +5415,7 @@ ApplicationWindow {
                                         height: 70
                                         text: modelData.kind === "header" ? qsTr("未发现头文件") : qsTr("未发现 LIB 文件")
                                         color: window.secondaryInk
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -5424,7 +5459,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: dllDetailPopup.detail.pePass ? qsTr("静态检查通过") : qsTr("需要处理")
                             color: dllDetailPopup.detail.pePass ? window.green : window.red
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                         }
                     }
@@ -5509,7 +5544,7 @@ ApplicationWindow {
                             Text {
                                 text: qsTr("共 %1 项").arg((dllDetailPopup.detail.dependencies || []).length)
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                         Rectangle { Layout.fillWidth: true; height: 1; color: window.line }
@@ -5535,7 +5570,7 @@ ApplicationWindow {
                                                 Layout.fillWidth: true
                                                 text: modelData.name
                                                 color: window.ink
-                                                font.pixelSize: 10
+                                                font.pixelSize: 12
                                                 elide: Text.ElideMiddle
                                                 ToolTip.visible: dependencyMouse.containsMouse && modelData.path.length > 0
                                                 ToolTip.text: modelData.path
@@ -5544,7 +5579,7 @@ ApplicationWindow {
                                             Text {
                                                 text: modelData.found ? qsTr("已找到") : qsTr("缺失")
                                                 color: modelData.found ? window.green : window.red
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 font.weight: Font.DemiBold
                                             }
                                         }
@@ -5556,7 +5591,7 @@ ApplicationWindow {
                                     height: 50
                                     text: qsTr("未发现导入依赖")
                                     color: window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -5582,7 +5617,7 @@ ApplicationWindow {
                             Text {
                                 text: qsTr("共 %1 项").arg((dllDetailPopup.detail.exportedSymbols || []).length)
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                         Rectangle { Layout.fillWidth: true; height: 1; color: window.line }
@@ -5608,20 +5643,20 @@ ApplicationWindow {
                                                 Layout.fillWidth: true
                                                 text: modelData.name
                                                 color: window.ink
-                                                font.pixelSize: 10
+                                                font.pixelSize: 12
                                                 elide: Text.ElideMiddle
                                             }
                                             Text {
                                                 visible: modelData.required
                                                 text: qsTr("必要接口")
                                                 color: window.tealDark
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                                 font.weight: Font.DemiBold
                                             }
                                             Text {
                                                 text: "#" + modelData.ordinal
                                                 color: window.secondaryInk
-                                                font.pixelSize: 9
+                                                font.pixelSize: 12
                                             }
                                         }
                                     }
@@ -5632,7 +5667,7 @@ ApplicationWindow {
                                     height: 50
                                     text: qsTr("未解析到导出接口")
                                     color: window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -5666,7 +5701,7 @@ ApplicationWindow {
                                  : qsTr("动态加载失败"))
                         color: dllDetailPopup.detail.loaded || dllDetailPopup.detail.configuration === "Debug"
                                ? window.ink : window.red
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                         font.weight: Font.DemiBold
                     }
                     Text {
@@ -5675,7 +5710,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         text: dllDetailPopup.detail.loadError || ""
                         color: window.secondaryInk
-                        font.pixelSize: 9
+                        font.pixelSize: 12
                         elide: Text.ElideRight
                         ToolTip.visible: loadErrorMouse.containsMouse && visible
                         ToolTip.text: text
@@ -5715,7 +5750,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: staticCheckPopup.report.overallPass ? qsTr("✓ 通过") : qsTr("! 需处理")
                             color: "white"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.Bold
                         }
                     }
@@ -5748,7 +5783,7 @@ ApplicationWindow {
                         contentItem: Text {
                             text: parent.text
                             color: staticCheckPopup.section === modelData.key ? "white" : window.secondaryInk
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -5763,7 +5798,7 @@ ApplicationWindow {
                         .arg((staticCheckPopup.report.conflicts || {}).odrConflicts || 0)
                         .arg((staticCheckPopup.report.conflicts || {}).namespaceRisks || 0)
                     color: window.secondaryInk
-                    font.pixelSize: 9
+                    font.pixelSize: 12
                 }
             }
 
@@ -5805,7 +5840,7 @@ ApplicationWindow {
                                         visible: staticCheckPopup.section === "dll"
                                         text: (modelData.configuration || "") + " · " + (modelData.architecture || "")
                                         color: window.secondaryInk
-                                        font.pixelSize: 9
+                                        font.pixelSize: 12
                                     }
                                     Rectangle {
                                         width: itemState.implicitWidth + 18
@@ -5817,7 +5852,7 @@ ApplicationWindow {
                                             anchors.centerIn: parent
                                             text: modelData.pass ? qsTr("通过") : qsTr("需处理")
                                             color: modelData.pass ? window.green : window.amber
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             font.weight: Font.Bold
                                         }
                                     }
@@ -5843,7 +5878,7 @@ ApplicationWindow {
                                                .arg(modelData.missingDependencies || 0)
                                                .arg(modelData.missingExports || 0))
                                     color: window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
                                 Text {
@@ -5855,7 +5890,7 @@ ApplicationWindow {
                                         .arg(modelData.missingSymbols || 0)
                                         .arg((modelData.loadError || "").length > 0 ? qsTr(" · ") + modelData.loadError : "")
                                     color: modelData.loadPass ? window.secondaryInk : window.red
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
                                 Text {
@@ -5992,7 +6027,7 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -6043,7 +6078,7 @@ ApplicationWindow {
                                              ? qsTr("横轴：执行次数  纵轴：内存 MB")
                                              : qsTr("横轴：经度  纵轴：纬度"))
                                     color: "#33415c"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                 }
                             }
                             RowLayout {
@@ -6116,7 +6151,7 @@ ApplicationWindow {
                                     labelFormat: detailChartView.chartType === "trajectory"
                                                  ? "%.5f" : "%.4g"
                                     labelsColor: "#33415c"
-                                    labelsFont.pixelSize: 10
+                                    labelsFont.pixelSize: 11
                                     color: "#93a4b8"
                                     gridLineColor: "#dde5ec"
                                     lineVisible: true
@@ -6134,7 +6169,7 @@ ApplicationWindow {
                                     labelFormat: detailChartView.chartType === "trajectory"
                                                  ? "%.5f" : "%.4g"
                                     labelsColor: "#33415c"
-                                    labelsFont.pixelSize: 10
+                                    labelsFont.pixelSize: 11
                                     color: "#93a4b8"
                                     gridLineColor: "#dde5ec"
                                     lineVisible: true
@@ -6248,7 +6283,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         text: qsTr("判定轨迹是否含无效数值、异常跳变、经纬度越界，或把弧度误当角度使用。")
                         color: window.secondaryInk
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                         elide: Text.ElideRight
                     }
                     Text {
@@ -6256,7 +6291,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         text: (performanceDetailPopup.detail.trajectoryMessages || []).join("；")
                         color: window.amber
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                         elide: Text.ElideRight
                         ToolTip.visible: trajectoryMessageMouse.containsMouse && visible
                         ToolTip.text: text
@@ -6336,7 +6371,7 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -6351,12 +6386,12 @@ ApplicationWindow {
                 color: "transparent"
                 RowLayout {
                     anchors.fill: parent
-                    Text { Layout.preferredWidth: 170; text: qsTr("型号 / 对象"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 80; text: qsTr("基线返回"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 80; text: qsTr("交错返回"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 92; text: qsTr("最大偏差"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 76; text: qsTr("状态"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.fillWidth: true; text: qsTr("说明"); color: window.secondaryInk; font.pixelSize: 9 }
+                    Text { Layout.preferredWidth: 170; text: qsTr("型号 / 对象"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 80; text: qsTr("基线返回"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 80; text: qsTr("交错返回"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 92; text: qsTr("最大偏差"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 76; text: qsTr("状态"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.fillWidth: true; text: qsTr("说明"); color: window.secondaryInk; font.pixelSize: 12 }
                 }
             }
 
@@ -6390,16 +6425,16 @@ ApplicationWindow {
                                     Layout.preferredWidth: 162
                                     text: (modelData.modelName || qsTr("未命名")) + " / #" + modelData.objectId
                                     color: window.ink
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     elide: Text.ElideMiddle
                                 }
-                                Text { Layout.preferredWidth: 72; text: modelData.baselineReturn; color: modelData.baselineReturn === 0 ? window.green : window.red; font.pixelSize: 10 }
-                                Text { Layout.preferredWidth: 72; text: modelData.interleavedReturn; color: modelData.interleavedReturn === 0 ? window.green : window.red; font.pixelSize: 10 }
+                                Text { Layout.preferredWidth: 72; text: modelData.baselineReturn; color: modelData.baselineReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
+                                Text { Layout.preferredWidth: 72; text: modelData.interleavedReturn; color: modelData.interleavedReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
                                 Text {
                                     Layout.preferredWidth: 84
                                     text: NumberFormat.toCompact(modelData.deviation || 0, 12)
                                     color: window.secondaryInk
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     elide: Text.ElideRight
                                     MouseArea {
                                         anchors.fill: parent
@@ -6415,7 +6450,7 @@ ApplicationWindow {
                                     text: modelData.exception ? qsTr("SEH 异常")
                                           : (modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? qsTr("失败") : qsTr("完成"))
                                     color: modelData.exception || modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? window.red : window.green
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     font.weight: Font.DemiBold
                                 }
                                 Text {
@@ -6425,7 +6460,7 @@ ApplicationWindow {
                                           ? qsTr("异常码 %1，故障步 %2").arg(modelData.exceptionCode).arg(modelData.faultStep)
                                           : qsTr("基线与交错执行完成"))
                                     color: window.secondaryInk
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                             }
@@ -6497,7 +6532,7 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -6541,7 +6576,7 @@ ApplicationWindow {
                                             anchors.centerIn: parent
                                             text: modelData.severity
                                             color: modelData.severity === "FAIL" ? window.red : window.amber
-                                            font.pixelSize: 9
+                                            font.pixelSize: 12
                                             font.weight: Font.Bold
                                         }
                                     }
@@ -6550,7 +6585,7 @@ ApplicationWindow {
                                               : (modelData.category === "ODR_CONFLICT" ? qsTr("ODR 冲突")
                                                  : qsTr("命名空间污染"))
                                         color: window.secondaryInk
-                                        font.pixelSize: 9
+                                        font.pixelSize: 12
                                     }
                                     Text {
                                         Layout.fillWidth: true
@@ -6565,14 +6600,14 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     text: modelData.detail
                                     color: window.secondaryInk
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                                 Text {
                                     Layout.fillWidth: true
                                     text: qsTr("涉及文件：") + (modelData.files || []).join("\n")
                                     color: window.tealDark
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     wrapMode: Text.WrapAnywhere
                                 }
                             }
@@ -6648,7 +6683,7 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: window.secondaryInk
-                                font.pixelSize: 9
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -6663,11 +6698,11 @@ ApplicationWindow {
                 color: "transparent"
                 RowLayout {
                     anchors.fill: parent
-                    Text { Layout.preferredWidth: 56; text: qsTr("线程"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 160; text: qsTr("型号 / 实例"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 72; text: qsTr("返回码"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.preferredWidth: 80; text: qsTr("状态"); color: window.secondaryInk; font.pixelSize: 9 }
-                    Text { Layout.fillWidth: true; text: qsTr("随机变量与错误信息"); color: window.secondaryInk; font.pixelSize: 9 }
+                    Text { Layout.preferredWidth: 56; text: qsTr("线程"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 160; text: qsTr("型号 / 实例"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 72; text: qsTr("返回码"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.preferredWidth: 80; text: qsTr("状态"); color: window.secondaryInk; font.pixelSize: 12 }
+                    Text { Layout.fillWidth: true; text: qsTr("随机变量与错误信息"); color: window.secondaryInk; font.pixelSize: 12 }
                 }
             }
 
@@ -6696,21 +6731,21 @@ ApplicationWindow {
                                 anchors.leftMargin: 9
                                 anchors.rightMargin: 9
                                 spacing: 8
-                                Text { Layout.preferredWidth: 48; text: "#" + modelData.threadId; color: window.secondaryInk; font.pixelSize: 10 }
+                                Text { Layout.preferredWidth: 48; text: "#" + modelData.threadId; color: window.secondaryInk; font.pixelSize: 12 }
                                 Text {
                                     Layout.preferredWidth: 152
                                     text: (modelData.modelName || qsTr("未命名")) + " / " + modelData.instanceId
                                     color: window.ink
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     elide: Text.ElideMiddle
                                 }
-                                Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 ? window.green : window.red; font.pixelSize: 10 }
+                                Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 ? window.green : window.red; font.pixelSize: 12 }
                                 Text {
                                     Layout.preferredWidth: 72
                                     text: modelData.exception ? qsTr("SEH 异常")
                                           : (modelData.userFail || modelData.returnCode !== 0 ? qsTr("失败") : qsTr("成功"))
                                     color: modelData.exception || modelData.userFail || modelData.returnCode !== 0 ? window.red : window.green
-                                    font.pixelSize: 10
+                                    font.pixelSize: 12
                                     font.weight: Font.DemiBold
                                 }
                                 Text {
@@ -6723,7 +6758,7 @@ ApplicationWindow {
                                         return parts.length > 0 ? parts.join(" · ") : qsTr("执行完成")
                                     }
                                     color: window.secondaryInk
-                                    font.pixelSize: 9
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                             }
@@ -7038,7 +7073,7 @@ ApplicationWindow {
                         anchors.margins: 12
                         text: qsTr("还原后会恢复型号、模型包路径、UserMain、随机变量、编译状态和运行参数。")
                         color: window.tealDark
-                        font.pixelSize: 10
+                        font.pixelSize: 12
                         wrapMode: Text.WordWrap
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -7100,7 +7135,8 @@ ApplicationWindow {
     Dialog {
         id: removeModelDialog
         modal: true
-        anchors.centerIn: parent
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
         title: qsTr("删除型号")
         standardButtons: Dialog.Yes | Dialog.No
         closePolicy: Popup.CloseOnEscape

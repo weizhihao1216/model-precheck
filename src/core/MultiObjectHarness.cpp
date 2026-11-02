@@ -711,7 +711,7 @@ bool MultiObjectHarness::InvokeCl(const MultiObjectHarnessConfig& config,
         log = "ERROR: 未找到 Visual Studio C++ 编译环境";
         return false;
     }
-    QString command = QStringLiteral("cl.exe /nologo /LD /EHa /std:c++14 /O2 /utf-8 /DNOMINMAX /Fe%1")
+    QString command = QStringLiteral("cl.exe /nologo /LD /EHa /std:c++14 /O2 /utf-8 /DNOMINMAX /wd4819 /Fe%1")
         .arg(quoteArg(qPath(outputDll)));
     for (const auto& include : config.includeDirs)
         command += QStringLiteral(" /I%1").arg(quoteArg(qPath(include)));

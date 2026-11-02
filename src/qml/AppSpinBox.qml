@@ -1,5 +1,5 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
 
 // 全应用统一的数值微调框外观：白底描边 + 可见的加减按钮。
 // 仅覆盖 background 与加减指示器，保留默认 contentItem（editable 文本输入正常工作）。

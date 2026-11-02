@@ -1,6 +1,6 @@
-# ModelValidator 换机部署 — 环境依赖说明
+# model-precheck 换机部署 — 环境依赖说明
 
-把整个 `dist` 文件夹拷到目标电脑后，先双击运行 **`ModelValidator.exe`**。  
+把整个 `dist` 文件夹拷到目标电脑后，先双击运行 **`model-precheck.exe`**。  
 若程序打不开，或「编译」相关功能失败，按下面对照说明安装对应程序（安装包在 `prerequisites/` 目录）。
 
 ---
@@ -11,7 +11,7 @@
 
 **典型现象**
 
-- 双击 `ModelValidator.exe` 后立刻闪退  
+- 双击 `model-precheck.exe` 后立刻闪退  
 - 弹窗提示找不到 `vcruntime140.dll`、`msvcp140.dll`、`vcruntime140_1.dll` 等  
 
 **请双击安装**
@@ -19,7 +19,7 @@
 `prerequisites\vc_redist.x64.exe`
 
 - 按提示完成安装（可能需要管理员权限）  
-- 装完后重新打开 `ModelValidator.exe`  
+- 装完后重新打开 `model-precheck.exe`  
 - 仅运行界面、加载已有 DLL、查看报告时，一般装这一项即可  
 
 ---
@@ -52,7 +52,7 @@
 
 1. 先装 `vc_redist.x64.exe`（几乎所有换机场景都需要）  
 2. 只有要用 UserMain / 多对象 **编译** 时，再运行 `install_build_tools.bat`（或手动装 `vs_BuildTools.exe`）  
-3. 再运行 `ModelValidator.exe`  
+3. 再运行 `model-precheck.exe`  
 
 ---
 

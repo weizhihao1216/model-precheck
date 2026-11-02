@@ -44,7 +44,7 @@ std::string PickReleaseDll(const ModelPackageFiles& pkg) {
         if (low.contains("\\debug\\") || low.contains("/debug/")) continue;
         if (fi.completeBaseName().endsWith(QLatin1Char('d'), Qt::CaseInsensitive)
             && fi.completeBaseName().size() > 1) {
-            // likely *d.dll debug — skip if a non-d sibling exists
+            // likely *d.dll debug -- skip if a non-d sibling exists
             continue;
         }
         return d;
@@ -220,12 +220,12 @@ int main(int argc, char** argv) {
 
     QTextStream out(stdout);
     out.setCodec("UTF-8");
-    out << "ROOT=" << root << endl;
-    out << "time=" << QDateTime::currentDateTime().toString(Qt::ISODate) << endl;
+    out << "ROOT=" << root << QT_ENDL;
+    out << "time=" << QDateTime::currentDateTime().toString(Qt::ISODate) << QT_ENDL;
 
     QDir dir(root);
     if (!dir.exists()) {
-        out << "FAIL: missing root" << endl;
+        out << "FAIL: missing root" << QT_ENDL;
         return 2;
     }
 
@@ -242,16 +242,16 @@ int main(int argc, char** argv) {
             << " conflictPass=" << (r.overallPass ? "PASS" : "FAIL")
             << " dup=" << r.duplicateTypeCount
             << " odr=" << r.odrConflictCount
-            << " ns=" << r.namespacePollutionCount << endl;
+            << " ns=" << r.namespacePollutionCount << QT_ENDL;
     };
 
-    out << "==== PAIR HEADER CONFLICTS ====" << endl;
+    out << "==== PAIR HEADER CONFLICTS ====" << QT_ENDL;
     pairConflict(QStringLiteral("HeaderClash_A"), QStringLiteral("HeaderClash_B"));
     pairConflict(QStringLiteral("TcPass_A"), QStringLiteral("TcPass_C"));
     pairConflict(QStringLiteral("TcPass_A"), QStringLiteral("TcPass_B"));
 
-    out << "==== PER PACKAGE ====" << endl;
-    out << "name\tbuild\tpe\tload\tlife\tdualCreate\tnotes" << endl;
+    out << "==== PER PACKAGE ====" << QT_ENDL;
+    out << "name\tbuild\tpe\tload\tlife\tdualCreate\tnotes" << QT_ENDL;
 
     QString csvPath = QDir(QCoreApplication::applicationDirPath())
         .filePath(QStringLiteral("sample_models_matrix.csv"));
@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
         Row row = TestPackage(fi.absoluteFilePath());
         out << row.name << '\t' << row.buildCfg << '\t' << row.pe << '\t'
             << row.load << '\t' << row.life << '\t' << row.dualCreate << '\t'
-            << row.notes << endl;
+            << row.notes << QT_ENDL;
         out.flush();
         auto esc = [](QString s) {
             s.replace('"', "\"\"");
@@ -285,7 +285,7 @@ int main(int argc, char** argv) {
                << esc(row.notes) << '\n';
     }
     csvOut.flush();
-    out << "CSV=" << csvPath << endl;
-    out << "ALL DONE" << endl;
+    out << "CSV=" << csvPath << QT_ENDL;
+    out << "ALL DONE" << QT_ENDL;
     return 0;
 }

@@ -1,6 +1,6 @@
-import QtQuick 2.14
-import QtQuick.Controls 2.14
-import QtQuick.Layouts 1.14
+import QtQuick 2.11
+import QtQuick.Controls 2.4
+import QtQuick.Layouts 1.11
 
 // 统一的等候提示层：一键预检、代码编译、单项测试等所有需要等待的操作共用。
 Popup {
@@ -16,7 +16,8 @@ Popup {
     property double progress: -1
 
     parent: Overlay.overlay
-    anchors.centerIn: parent
+    x: Math.round((parent.width - width) / 2)
+    y: Math.round((parent.height - height) / 2)
     width: Math.min(520, parent ? parent.width - 80 : 440)
     height: 280
     padding: 0
@@ -74,6 +75,8 @@ Popup {
             Layout.leftMargin: 26
             Layout.rightMargin: 26
             height: 6
+            implicitHeight: 6
+            Layout.preferredHeight: 6
             radius: 3
             color: "#dcece9"
 
@@ -97,30 +100,30 @@ Popup {
         }
         Text {
             Layout.fillWidth: true
-            text: {
-                var base = overlay.elapsedSeconds > 0
-                           ? qsTr("%1 · 已等待 %2 秒").arg(overlay.hint).arg(overlay.elapsedSeconds)
-                           : overlay.hint
-                if (overlay.progress >= 0)
-                    return qsTr("已完成 %1% · %2")
-                        .arg(Math.round(Math.min(1, overlay.progress) * 100)).arg(base)
-                return base
-            }
-            color: "#8794a6"
-            font.pixelSize: 11
+            visible: overlay.hint.length > 0
+            text: (overlay.progress >= 0.0 && overlay.progress <= 1.0)
+                  ? (overlay.hint + " (" + Math.round(overlay.progress * 100) + "%)")
+                  : overlay.hint
+            color: "#0d9488"
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
             horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
         }
         Text {
-            visible: overlay.logLine.length > 0
             Layout.fillWidth: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
+            visible: overlay.logLine.length > 0
             text: overlay.logLine
-            color: "#718195"
+            color: "#8898aa"
+            font.pixelSize: 11
             font.family: "Consolas"
-            font.pixelSize: 10
-            elide: Text.ElideMiddle
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+        }
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("已耗时 %1 秒").arg(overlay.elapsedSeconds)
+            color: "#8898aa"
+            font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter
         }
 

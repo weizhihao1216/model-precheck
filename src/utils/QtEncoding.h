@@ -1,13 +1,23 @@
 #ifndef QT_ENCODING_H
 #define QT_ENCODING_H
 
-#include <QString>
-#include <QByteArray>
-#include <QTextCodec>
+#include "QtCompat.h"
+#include <QtCore/QString>
+#include <QtCore/QByteArray>
+#include <QtCore/QTextCodec>
 #include <string>
 
 // Qt5 QString::fromStdString / toStdString use Latin-1 — wrong for UTF-8 Chinese.
 // Project sources are compiled with /utf-8; internal std::string text is UTF-8.
+
+#if defined(__cpp_char8_t)
+inline QString qUtf8Literal(const char8_t* s) {
+    return QString::fromUtf8(reinterpret_cast<const char*>(s));
+}
+#define Q_UTF8(str) qUtf8Literal(u8##str)
+#else
+#define Q_UTF8(str) QString::fromUtf8(u8##str)
+#endif
 
 inline QString qUtf8(const std::string& s) {
     return QString::fromUtf8(s.data(), static_cast<int>(s.size()));

@@ -70,7 +70,7 @@ SessionModelSnapshot modelFromJson(const QJsonObject& o) {
     model.multiObjectDt = o.value(QStringLiteral("multiObjectDt")).toDouble(0.02);
     model.multiObjectTolerance = o.value(QStringLiteral("multiObjectTolerance")).toDouble(1e-8);
     model.multiObjectSchedule = o.value(QStringLiteral("multiObjectSchedule")).toInt(0);
-    model.status = o.value(QStringLiteral("status")).toString(QStringLiteral("未编译"));
+    model.status = o.value(QStringLiteral("status")).toString(QString::fromUtf8("未编译"));
     model.lastUserHarnessDll = o.value(QStringLiteral("lastUserHarnessDll")).toString();
     return model;
 }
@@ -113,12 +113,12 @@ bool SessionStore::Save(const SessionSnapshot& snapshot, QString* error, const Q
     const QString p = path.isEmpty() ? DefaultPath() : path;
     QFileInfo fi(p);
     if (!fi.dir().mkpath(QStringLiteral("."))) {
-        if (error) *error = QStringLiteral("无法创建会话目录");
+        if (error) *error = QString::fromUtf8("无法创建会话目录");
         return false;
     }
     QFile file(p);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        if (error) *error = QStringLiteral("无法写入会话文件: %1").arg(p);
+        if (error) *error = QString::fromUtf8("无法写入会话文件: %1").arg(p);
         return false;
     }
     file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
@@ -129,13 +129,13 @@ bool SessionStore::Load(SessionSnapshot& snapshot, QString* error, const QString
     const QString p = path.isEmpty() ? DefaultPath() : path;
     QFile file(p);
     if (!file.open(QIODevice::ReadOnly)) {
-        if (error) *error = QStringLiteral("无法读取会话文件: %1").arg(p);
+        if (error) *error = QString::fromUtf8("无法读取会话文件: %1").arg(p);
         return false;
     }
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        if (error) *error = QStringLiteral("会话文件 JSON 无效");
+        if (error) *error = QString::fromUtf8("会话文件 JSON 无效");
         return false;
     }
     const QJsonObject root = doc.object();
@@ -159,18 +159,18 @@ bool SessionStore::Load(SessionSnapshot& snapshot, QString* error, const QString
 QString SessionStore::Summarize(const SessionSnapshot& snapshot) {
     QString when = snapshot.savedAt.isValid()
         ? snapshot.savedAt.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))
-        : QStringLiteral("未知时间");
+        : QString::fromUtf8("未知时间");
     QStringList names;
     for (const auto& m : snapshot.models) {
         if (!m.name.trimmed().isEmpty())
             names.append(m.name.trimmed());
     }
     QString namePart = names.isEmpty()
-        ? QStringLiteral("无名称")
-        : names.mid(0, 3).join(QStringLiteral("、"));
+        ? QString::fromUtf8("无名称")
+        : names.mid(0, 3).join(QString::fromUtf8("、"));
     if (names.size() > 3)
-        namePart += QStringLiteral(" 等");
-    return QStringLiteral("保存时间：%1\n型号数量：%2（%3）")
+        namePart += QString::fromUtf8(" 等");
+    return QString::fromUtf8("保存时间：%1\n型号数量：%2（%3）")
         .arg(when)
         .arg(snapshot.models.size())
         .arg(namePart);
