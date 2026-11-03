@@ -10,8 +10,8 @@ ApplicationWindow {
     visible: true
     width: 1600
     height: 900
-    minimumWidth: 1180
-    minimumHeight: 720
+    minimumWidth: 1080
+    minimumHeight: 600
     // 启动即铺满可用桌面：设计基准（逻辑可用区 ≥1920x1040）下代码框才能完整显示
     // 对象代码模板并保留右侧/下方留白；窄逻辑宽度下会被缩放策略自动收窄。
     visibility: Window.Maximized
@@ -37,6 +37,9 @@ ApplicationWindow {
     readonly property color redPale: "#fff0f1"
     readonly property color line: "#dce4ec"
     readonly property color panel: "#ffffff"
+
+    // 导航侧边栏自适应宽度：在有效逻辑宽度受限(如Qt 5.11高分屏缩放或低分屏)时紧凑化，把空间让给中央工作区
+    readonly property int navSidebarWidth: window.width < 1350 ? 160 : (window.width < 1500 ? 185 : 210)
 
     // 日志着色：失败/异常 → 红，警告 → 黄，成功/通过 → 绿，其余为常规深灰。
     // 先剔除“失败=0 / 异常=0 / 错误=0”这类计数为 0 的表述，否则会被误判成失败。
@@ -82,7 +85,7 @@ ApplicationWindow {
     }
 
     header: Rectangle {
-        height: 64
+        height: window.width < 1350 ? 54 : 64
         color: "#ffffff"
         border.color: window.line
         border.width: 1
@@ -187,7 +190,7 @@ ApplicationWindow {
         spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: window.width < 1400 ? 190 : 210
+            Layout.preferredWidth: window.navSidebarWidth
             Layout.fillHeight: true
             color: "#ffffff"
             border.color: window.line
@@ -831,7 +834,7 @@ ApplicationWindow {
 
     Popup {
         id: settingsPopup
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: 0
         width: window.width - x
         height: window.height - window.header.height
@@ -1191,7 +1194,7 @@ ApplicationWindow {
 
     Popup {
         id: specialtyPopup
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: 0
         width: window.width - x
         height: window.height - window.header.height
@@ -2126,7 +2129,7 @@ ApplicationWindow {
 
     Popup {
         id: configurationPopup
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: 0
         width: window.width - x
         height: window.height - window.header.height
@@ -2142,7 +2145,7 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 70
+                height: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -2232,15 +2235,15 @@ ApplicationWindow {
                 id: configurationBody
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 18
-                spacing: 16
+                Layout.margins: window.width < 1350 ? 12 : 18
+                spacing: window.width < 1350 ? 10 : 16
 
                 Rectangle {
                     // 逻辑宽度不足设计基准(1920)时按比例收窄，把宽度让给中间的代码框，
                     // 保证代码框右侧仍有留白、长行不出现横向滚动条。
-                    Layout.preferredWidth: window.width < 1400
-                                           ? 196
-                                           : Math.min(238, Math.max(200, window.width * 0.13))
+                    Layout.preferredWidth: window.width < 1350
+                                           ? 172
+                                           : (window.width < 1500 ? 196 : Math.min(238, Math.max(200, window.width * 0.13)))
                     Layout.fillHeight: true
                     radius: 9
                     color: "white"
@@ -2387,35 +2390,35 @@ ApplicationWindow {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 92
+                        height: window.width < 1350 ? 72 : 88
                         radius: 9
                         color: "white"
                         border.color: window.line
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 16
-                            spacing: 14
+                            anchors.margins: window.width < 1350 ? 12 : 16
+                            spacing: window.width < 1350 ? 10 : 14
                             Rectangle {
-                                width: 42
-                                height: 42
-                                radius: 21
+                                width: window.width < 1350 ? 36 : 42
+                                height: width
+                                radius: width / 2
                                 color: window.tealPale
                                 Text {
                                     anchors.centerIn: parent
                                     text: "◇"
                                     color: window.teal
-                                    font.pixelSize: 20
+                                    font.pixelSize: window.width < 1350 ? 17 : 20
                                     font.weight: Font.Bold
                                 }
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 4
+                                spacing: 2
                                 Text {
                                     text: appController.selectedModelName.length > 0
                                           ? appController.selectedModelName : qsTr("请选择型号")
                                     color: window.ink
-                                    font.pixelSize: 17
+                                    font.pixelSize: window.width < 1350 ? 15 : 17
                                     font.weight: Font.Bold
                                 }
                                 Text {
@@ -2431,16 +2434,16 @@ ApplicationWindow {
                             }
                             AppButton {
                                 text: qsTr("查看内容")
-                                implicitWidth: 88
-                                implicitHeight: 36
+                                implicitWidth: window.width < 1350 ? 80 : 88
+                                implicitHeight: window.width < 1350 ? 32 : 36
                                 enabled: appController.selectedPackageDir.length > 0
                                 onClicked: packageContentsPopup.open()
                             }
                             AppButton {
                                 text: appController.selectedPackageDir.length > 0
                                       ? qsTr("重新选择") : qsTr("选择模型包")
-                                implicitWidth: 112
-                                implicitHeight: 36
+                                implicitWidth: window.width < 1350 ? 98 : 112
+                                implicitHeight: window.width < 1350 ? 32 : 36
                                 enabled: appController.selectedModelIndex >= 0
                                 onClicked: appController.browseSelectedPackage()
                                 contentItem: Text {
@@ -2476,7 +2479,7 @@ ApplicationWindow {
                                 Text {
                                     text: qsTr("对象生命周期代码")
                                     color: window.ink
-                                    font.pixelSize: 16
+                                    font.pixelSize: window.width < 1350 ? 15 : 16
                                     font.weight: Font.Bold
                                 }
                                 Text {
@@ -2493,8 +2496,8 @@ ApplicationWindow {
                                 Item { Layout.fillWidth: true }
                                 AppButton {
                                     text: qsTr("保存代码")
-                                    implicitWidth: 88
-                                    implicitHeight: 32
+                                    implicitWidth: window.width < 1350 ? 76 : 88
+                                    implicitHeight: window.width < 1350 ? 28 : 32
                                     enabled: appController.selectedModelIndex >= 0
                                     onClicked: appController.saveSelectedUserMain(codeEditor.text)
                                     contentItem: Text {
@@ -2514,7 +2517,7 @@ ApplicationWindow {
                             }
                             Rectangle {
                                 Layout.fillWidth: true
-                                implicitHeight: 46
+                                implicitHeight: window.width < 1350 ? 40 : 44
                                 radius: 6
                                 color: "#f8fafc"
                                 border.color: window.line
@@ -2522,55 +2525,69 @@ ApplicationWindow {
                                     anchors.fill: parent
                                     anchors.leftMargin: 12
                                     anchors.rightMargin: 12
-                                    spacing: 10
+                                    spacing: 8
 
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
+                                    Row {
+                                        Layout.alignment: Qt.AlignVCenter
                                         spacing: 6
                                         Text {
-                                            text: qsTr("仿真步进参数")
+                                            text: qsTr("步进参数")
                                             color: window.ink
-                                            font.pixelSize: 13
+                                            font.pixelSize: 12
                                             font.weight: Font.DemiBold
+                                            anchors.verticalCenter: parent.verticalCenter
                                         }
                                         Text {
-                                            Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            text: qsTr("(多项测试共用，修改后无需重新编译)")
+                                            text: qsTr("(多项测试共用)")
                                             color: window.secondaryInk
                                             font.pixelSize: 11
-                                            elide: Text.ElideRight
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            visible: window.width >= 1350
                                         }
                                     }
 
                                     Item { Layout.fillWidth: true }
 
-                                    RowLayout {
-                                        spacing: 8
-                                        Text { text: qsTr("步数"); color: window.ink; font.pixelSize: 12 }
+                                    Row {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 6
+
+                                        Text {
+                                            text: qsTr("步数")
+                                            color: window.ink
+                                            font.pixelSize: 12
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
                                         AppSpinBox {
                                             id: runtimeStepsBox
                                             from: 1
                                             to: 100000
                                             stepSize: 1
                                             editable: true
-                                            implicitWidth: 106
-                                            implicitHeight: 30
+                                            implicitWidth: 92
+                                            implicitHeight: 28
+                                            anchors.verticalCenter: parent.verticalCenter
                                         }
-                                        Text { text: qsTr("步长 dt"); color: window.ink; font.pixelSize: 12 }
+                                        Text {
+                                            text: qsTr("步长 dt")
+                                            color: window.ink
+                                            font.pixelSize: 12
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
                                         AppTextField {
                                             id: runtimeDtField
-                                            implicitWidth: 80
-                                            implicitHeight: 30
+                                            implicitWidth: 68
+                                            implicitHeight: 28
                                             font.pixelSize: 12
                                             validator: DoubleValidator { bottom: 0.000001; top: 60.0 }
+                                            anchors.verticalCenter: parent.verticalCenter
                                         }
                                         AppButton {
                                             text: qsTr("应用")
-                                            implicitWidth: 64
-                                            implicitHeight: 30
+                                            implicitWidth: 54
+                                            implicitHeight: 28
                                             enabled: appController.selectedModelIndex >= 0
+                                            anchors.verticalCenter: parent.verticalCenter
                                             onClicked: appController.saveStepSettings(
                                                 runtimeStepsBox.value, Number(runtimeDtField.text))
                                         }
@@ -2817,7 +2834,7 @@ ApplicationWindow {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 60
+                        height: window.width < 1350 ? 48 : 58
                         radius: 8
                         color: appController.configurationMessage.indexOf(qsTr("失败")) >= 0
                                ? "#fff0f1" : "#eef8fb"
@@ -2825,9 +2842,9 @@ ApplicationWindow {
                                       ? "#f1c2c6" : "#cfe5ed"
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 15
+                            anchors.leftMargin: 14
                             anchors.rightMargin: 12
-                            spacing: 12
+                            spacing: 10
                             Text {
                                 Layout.fillWidth: true
                                 text: appController.configurationMessage.length > 0
@@ -2839,8 +2856,8 @@ ApplicationWindow {
                             }
                             AppButton {
                                 text: appController.compileBusy ? qsTr("正在编译…") : qsTr("保存并编译")
-                                implicitWidth: 132
-                                implicitHeight: 40
+                                implicitWidth: window.width < 1350 ? 116 : 132
+                                implicitHeight: window.width < 1350 ? 34 : 40
                                 enabled: appController.selectedModelIndex >= 0 && !appController.compileBusy
                                 onClicked: appController.compileSelectedModel(codeEditor.text)
                                 contentItem: Text {
@@ -2868,12 +2885,12 @@ ApplicationWindow {
                     id: configurationRightColumn
                     // 右侧区域：明确关闭 fillWidth，锁定宽度，避免挤占中间代码编辑区
                     Layout.fillWidth: false
-                    Layout.preferredWidth: window.width < 1400
-                                           ? 380
-                                           : Math.min(460, Math.max(380, window.width * 0.25))
+                    Layout.preferredWidth: window.width < 1350
+                                           ? 350
+                                           : (window.width < 1500 ? 380 : Math.min(460, Math.max(380, window.width * 0.25)))
                     Layout.maximumWidth: 460
                     Layout.fillHeight: true
-                    spacing: 14
+                    spacing: window.width < 1350 ? 10 : 14
 
                     // 卡片 1：随机变量配置表
                     Rectangle {
@@ -2957,7 +2974,7 @@ ApplicationWindow {
                                     anchors.rightMargin: 6
                                     spacing: 4
                                     Text {
-                                        Layout.preferredWidth: 28
+                                        Layout.preferredWidth: window.width < 1350 ? 24 : 28
                                         text: qsTr("启用")
                                         color: "#475569"
                                         font.pixelSize: 11
@@ -2966,7 +2983,7 @@ ApplicationWindow {
                                     }
                                     Text {
                                         Layout.fillWidth: true
-                                        Layout.minimumWidth: 80
+                                        Layout.minimumWidth: window.width < 1350 ? 68 : 80
                                         leftPadding: 4
                                         text: qsTr("变量名")
                                         color: "#475569"
@@ -2974,7 +2991,7 @@ ApplicationWindow {
                                         font.weight: Font.DemiBold
                                     }
                                     Text {
-                                        Layout.preferredWidth: 76
+                                        Layout.preferredWidth: window.width < 1350 ? 66 : 76
                                         text: qsTr("类型")
                                         color: "#475569"
                                         font.pixelSize: 11
@@ -2982,7 +2999,7 @@ ApplicationWindow {
                                         horizontalAlignment: Text.AlignHCenter
                                     }
                                     Text {
-                                        Layout.preferredWidth: 54
+                                        Layout.preferredWidth: window.width < 1350 ? 48 : 54
                                         text: qsTr("最小值")
                                         color: "#475569"
                                         font.pixelSize: 11
@@ -2990,7 +3007,7 @@ ApplicationWindow {
                                         horizontalAlignment: Text.AlignHCenter
                                     }
                                     Text {
-                                        Layout.preferredWidth: 54
+                                        Layout.preferredWidth: window.width < 1350 ? 48 : 54
                                         text: qsTr("最大值")
                                         color: "#475569"
                                         font.pixelSize: 11
@@ -2998,7 +3015,7 @@ ApplicationWindow {
                                         horizontalAlignment: Text.AlignHCenter
                                     }
                                     Text {
-                                        Layout.preferredWidth: 26
+                                        Layout.preferredWidth: window.width < 1350 ? 24 : 26
                                         text: qsTr("操作")
                                         color: "#475569"
                                         font.pixelSize: 11
@@ -3045,7 +3062,7 @@ ApplicationWindow {
                                                 spacing: 4
 
                                                 Item {
-                                                    Layout.preferredWidth: 28
+                                                    Layout.preferredWidth: window.width < 1350 ? 24 : 28
                                                     Layout.preferredHeight: 24
                                                     CheckBox {
                                                         id: enabledCheck
@@ -3077,7 +3094,7 @@ ApplicationWindow {
                                                 TextField {
                                                     id: nameField
                                                     Layout.fillWidth: true
-                                                    Layout.minimumWidth: 80
+                                                    Layout.minimumWidth: window.width < 1350 ? 68 : 80
                                                     implicitHeight: 26
                                                     text: modelData.name
                                                     placeholderText: qsTr("变量名")
@@ -3100,7 +3117,7 @@ ApplicationWindow {
 
                                                 AppComboBox {
                                                     id: typeField
-                                                    Layout.preferredWidth: 76
+                                                    Layout.preferredWidth: window.width < 1350 ? 66 : 76
                                                     implicitHeight: 26
                                                     model: ["double", "int"]
                                                     currentIndex: modelData.type === "int" ? 1 : 0
@@ -3163,7 +3180,7 @@ ApplicationWindow {
 
                                                 TextField {
                                                     id: minField
-                                                    Layout.preferredWidth: 54
+                                                    Layout.preferredWidth: window.width < 1350 ? 48 : 54
                                                     implicitHeight: 26
                                                     text: modelData.minimum
                                                     selectByMouse: true
@@ -3183,7 +3200,7 @@ ApplicationWindow {
 
                                                 TextField {
                                                     id: maxField
-                                                    Layout.preferredWidth: 54
+                                                    Layout.preferredWidth: window.width < 1350 ? 48 : 54
                                                     implicitHeight: 26
                                                     text: modelData.maximum
                                                     selectByMouse: true
@@ -3202,7 +3219,7 @@ ApplicationWindow {
                                                 }
 
                                                 AppButton {
-                                                    Layout.preferredWidth: 26
+                                                    Layout.preferredWidth: window.width < 1350 ? 24 : 26
                                                     Layout.preferredHeight: 24
                                                     text: "×"
                                                     onClicked: appController.removeRandomVariable(index)
@@ -4093,7 +4110,7 @@ ApplicationWindow {
             }
             return filtered
         }
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: 0
         width: window.width - x
         height: window.height - window.header.height
@@ -4114,7 +4131,7 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 70
+                height: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -7011,7 +7028,7 @@ ApplicationWindow {
 
     Popup {
         id: reportCenterPopup
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: 0
         width: window.width - x
         height: window.height - window.header.height
@@ -7025,7 +7042,7 @@ ApplicationWindow {
             spacing: 0
             Rectangle {
                 Layout.fillWidth: true
-                height: 70
+                height: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -7390,7 +7407,7 @@ ApplicationWindow {
 
     Popup {
         id: logPopup
-        x: window.width < 1400 ? 190 : 210
+        x: window.navSidebarWidth
         y: window.height - window.header.height - height
         width: window.width - x
         height: Math.min(460, (window.height - window.header.height) * 0.58)
