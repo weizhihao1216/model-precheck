@@ -18,6 +18,9 @@ ApplicationWindow {
     title: qsTr("第三方武器模型集成预检")
     color: "#f4f7fa"
 
+    // 弹出层可用高度（排除窗口顶部 Header 高度，避免弹窗在小屏/缩放下底部溢出屏幕）
+    readonly property real overlayAvailableHeight: height - (header ? header.height : 0)
+
     onClosing: function(close) {
         if (appController.precheckRunning || appController.compileBusy
                 || appController.specialtyBusy || appController.multiObjectBusy)
@@ -1726,9 +1729,9 @@ ApplicationWindow {
             selectedIndexes = next
         }
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 960)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -3444,9 +3447,9 @@ ApplicationWindow {
         id: packageContentsPopup
         property string fileFilter: qsTr("全部")
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 860)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -3658,13 +3661,10 @@ ApplicationWindow {
 
     Popup {
         id: multiObjectPopup
-        // 记录关闭后是否需要恢复专项测试页。"型号与代码"按钮会将此标记置 false，
-        // 而关闭弹窗右上角 × 或 Escape 时则保持默认的 true 以便返回。
-        property bool __returnToSpecialty: true
         width: Math.min(window.width - (window.width < 1350 ? 30 : 80), 1260)
-        height: Math.min(window.height - (window.height < 750 ? 20 : 50), 860)
-        x: (window.width - width) / 2
-        y: Math.max(8, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 16 : 40), 820)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -3753,7 +3753,6 @@ ApplicationWindow {
                                 implicitWidth: 100
                                 implicitHeight: 32
                                 onClicked: {
-                                    multiObjectPopup.__returnToSpecialty = false
                                     multiObjectPopup.close()
                                     configurationPopup.open()
                                 }
@@ -4110,18 +4109,12 @@ ApplicationWindow {
             configurationPopup.close()
             resultsPopup.close()
             reportCenterPopup.close()
-            specialtyPopup.close()
             if (appController.selectedModelIndex < 0 && appController.modelCount > 0)
                 appController.selectModel(0)
             appController.initializeFleetMultiObjectSelection()
             if (singleModelBox.count > 0)
                 singleModelBox.currentIndex = Math.max(0, appController.selectedModelIndex)
             loadValues()
-        }
-        onClosed: {
-            if (__returnToSpecialty)
-                specialtyPopup.open()
-            __returnToSpecialty = true
         }
     }
 
@@ -5569,9 +5562,9 @@ ApplicationWindow {
         id: staticModelDetailPopup
         property var detail: ({ "headers": [], "libraries": [] })
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -5754,9 +5747,9 @@ ApplicationWindow {
         property string modelName: ""
         property var detail: ({ "dependencies": [], "exportedSymbols": [] })
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -6034,9 +6027,9 @@ ApplicationWindow {
         property string section: "header"
         property var report: appController.specialtyStaticReport
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -6239,9 +6232,9 @@ ApplicationWindow {
             return value.length > 0 ? value : qsTr("未知")
         }
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -6619,9 +6612,9 @@ ApplicationWindow {
         property var detail: ({ "objects": [] })
         readonly property real maxDeviationValue: Number(detail.maxDeviation || 0)
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1020)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -6798,9 +6791,9 @@ ApplicationWindow {
     Popup {
         id: headerConflictPopup
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1000)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
@@ -6947,9 +6940,9 @@ ApplicationWindow {
         id: concurrencyDetailPopup
         property var detail: ({ "workers": [] })
         width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 980)
-        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
-        x: (window.width - width) / 2
-        y: Math.max(10, (window.height - height) / 2)
+        height: Math.min(window.overlayAvailableHeight - (window.overlayAvailableHeight < 700 ? 20 : 50), 720)
+        x: Math.round((window.width - width) / 2)
+        y: Math.max(8, Math.round((window.overlayAvailableHeight - height) / 2))
         padding: 0
         modal: true
         focus: true
