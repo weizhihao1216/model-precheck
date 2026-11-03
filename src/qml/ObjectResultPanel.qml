@@ -175,9 +175,9 @@ Item {
         // 左右两张坐标表：同一行号表示同一步，可直接比较基线与交错坐标。
         RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumHeight: panel.height < 250 ? 90 : 130
-            Layout.preferredHeight: panel.height < 250 ? 110 : 140
+            Layout.fillHeight: false
+            Layout.minimumHeight: panel.height < 250 ? 90 : 120
+            Layout.preferredHeight: panel.height < 250 ? 110 : 136
             implicitHeight: Layout.preferredHeight
             visible: panel.verdict.length > 0
             spacing: 8
@@ -323,7 +323,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: 88
-            Layout.preferredHeight: Math.min(180, Math.max(88, (panel.resultItems ? panel.resultItems.length : 0) * 48))
+            Layout.preferredHeight: Math.min(240, Math.max(88, (panel.resultItems ? panel.resultItems.length : 0) * 48))
             implicitHeight: Layout.preferredHeight
             visible: panel.resultItems.length > 0
             clip: true
