@@ -216,6 +216,8 @@ ApplicationWindow {
                     ]
                     delegate: Rectangle {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: 52
+                        implicitHeight: 52
                         height: 52
                         radius: 7
                         color: modelData.active ? window.tealPale
@@ -520,6 +522,8 @@ ApplicationWindow {
 
                             Rectangle {
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 35
+                                implicitHeight: 35
                                 height: 35
                                 radius: 4
                                 color: "#f4f7fa"
@@ -568,6 +572,8 @@ ApplicationWindow {
                                 model: appController.models
                                 delegate: Rectangle {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 48
+                                    implicitHeight: 48
                                     height: 48
                                     radius: 6
                                     color: modelData.compiled ? "#f0faf5" : window.amberPale
@@ -754,6 +760,8 @@ ApplicationWindow {
                                         qsTr("单线程多对象")]
                                 delegate: Rectangle {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 40
+                                    implicitHeight: 40
                                     height: 40
                                     radius: 6
                                     color: "#f4f8fa"
@@ -2339,6 +2347,8 @@ ApplicationWindow {
                             model: appController.models
                             delegate: Rectangle {
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 58
+                                implicitHeight: 58
                                 height: 58
                                 radius: 7
                                 color: appController.selectedModelIndex === modelData.index
@@ -3548,20 +3558,13 @@ ApplicationWindow {
                 radius: 8
                 color: "#f8fafc"
                 border.color: window.line
-                Flickable {
-                    id: packageListFlick
+                ListView {
+                    id: packageListView
                     anchors.fill: parent
                     anchors.margins: 8
                     clip: true
-                    contentWidth: width
-                    contentHeight: packageListColumn.implicitHeight + 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: ScrollBar { }
-                    ColumnLayout {
-                        id: packageListColumn
-                        width: packageListFlick.width - 12
-                        spacing: 6
-                        Repeater {
+                    spacing: 6
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                             model: {
                                 var all = appController.selectedPackageContents
                                 if (packageContentsPopup.fileFilter === qsTr("全部")) return all
@@ -3570,9 +3573,9 @@ ApplicationWindow {
                                     if (all[i].kind === packageContentsPopup.fileFilter) filtered.push(all[i])
                                 return filtered
                             }
-                            delegate: Rectangle {
-                                Layout.fillWidth: true
-                                height: 56
+                    delegate: Rectangle {
+                        width: ListView.view.width - (packageListView.contentHeight > packageListView.height ? 10 : 0)
+                        height: 56
                                 radius: 6
                                 color: "white"
                                 border.color: window.line
@@ -3641,18 +3644,13 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
-                        Text {
-                            visible: appController.selectedPackageContents.length === 0
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 120
-                            text: qsTr("没有扫描到可显示的文件")
-                            color: window.secondaryInk
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            font.pixelSize: 12
-                        }
-                    }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: appController.selectedPackageContents.length === 0
+                    text: qsTr("没有扫描到可显示的文件")
+                    color: window.secondaryInk
+                    font.pixelSize: 12
                 }
             }
         }
@@ -3919,25 +3917,18 @@ ApplicationWindow {
                             font.pixelSize: 12
                             elide: Text.ElideRight
                         }
-                        Flickable {
-                            id: fleetListFlick
+                        ListView {
+                            id: fleetListView
                             Layout.fillWidth: true
-                            Layout.preferredHeight: window.height < 750 ? 84 : 116
+                            Layout.preferredHeight: window.height < 750 ? 96 : 124
                             Layout.minimumHeight: 64
                             clip: true
-                            contentWidth: width
-                            contentHeight: fleetListColumn.implicitHeight + 4
-                            boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar { }
-                            ColumnLayout {
-                                id: fleetListColumn
-                                width: fleetListFlick.width - 12
-                                spacing: 4
-                                Repeater {
-                                    model: appController.fleetMultiObjectModels
-                                    delegate: Rectangle {
-                                        Layout.fillWidth: true
-                                        height: window.height < 750 ? 46 : 56
+                            spacing: 6
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            model: appController.fleetMultiObjectModels
+                            delegate: Rectangle {
+                                width: ListView.view.width - (fleetListView.contentHeight > fleetListView.height ? 10 : 0)
+                                height: window.height < 750 ? 46 : 56
                                         radius: 6
                                         color: modelData.ready ? "#f8fafc" : "#f4f5f7"
                                         border.color: modelData.selected ? "#79cec7" : window.line
@@ -3996,10 +3987,7 @@ ApplicationWindow {
                                             }
                                         }
                                     }
-                                }
                             }
-                        }
-
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 10
@@ -4565,7 +4553,11 @@ ApplicationWindow {
                                         }
                                     }
                                     Rectangle {
-                                        width: compactResultState.implicitWidth + 30
+                                        implicitWidth: compactResultState.implicitWidth + 30
+                                        implicitHeight: 36
+                                        Layout.preferredWidth: implicitWidth
+                                        Layout.preferredHeight: 36
+                                        width: implicitWidth
                                         height: 36
                                         radius: 18
                                         color: Qt.lighter(compactResultItemCard.stateColor, 1.85)
@@ -7153,6 +7145,8 @@ ApplicationWindow {
 
                     Rectangle {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: 96
+                        implicitHeight: 96
                         height: 96
                         radius: 10
                         color: "white"
@@ -7209,6 +7203,8 @@ ApplicationWindow {
                         model: appController.reportHistory
                         delegate: Rectangle {
                             Layout.fillWidth: true
+                            Layout.preferredHeight: 92
+                            implicitHeight: 92
                             height: 92
                             radius: 9
                             color: "white"
