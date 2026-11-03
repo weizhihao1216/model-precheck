@@ -5584,88 +5584,81 @@ ApplicationWindow {
                                 }
                             }
                             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: window.line }
-                            ScrollView {
+                            ListView {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
-                                Column {
-                                    width: parent.width
-                                    spacing: 5
-                                    Repeater {
-                                        model: modelData.kind === "header"
-                                               ? (staticModelDetailPopup.detail.headers || [])
-                                               : (staticModelDetailPopup.detail.libraries || [])
-                                        delegate: Rectangle {
-                                            width: parent.width
-                                            height: 70
-                                            radius: 6
-                                            color: modelData.pass ? "#f8fafc" : window.redPale
-                                            border.color: modelData.pass ? window.line : "#efb6ba"
-                                            ColumnLayout {
-                                                anchors.fill: parent
-                                                anchors.margins: 8
-                                                spacing: 4
-                                                RowLayout {
-                                                    Layout.fillWidth: true
-                                                    Text {
-                                                        Layout.fillWidth: true
-                                                        text: modelData.name
-                                                        color: window.ink
-                                                        font.pixelSize: 12
-                                                        font.weight: Font.DemiBold
-                                                        elide: Text.ElideMiddle
-                                                        ToolTip.visible: staticFileMouse.containsMouse
-                                                        ToolTip.text: modelData.path
-                                                        MouseArea { id: staticFileMouse; anchors.fill: parent; hoverEnabled: true }
-                                                    }
-                                                    Text {
-                                                        text: modelData.pass ? qsTr("通过") : qsTr("需处理")
-                                                        color: modelData.pass ? window.green : window.red
-                                                        font.pixelSize: 12
-                                                        font.weight: Font.DemiBold
-                                                    }
-                                                }
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    text: modelData.encoding !== undefined
-                                                          ? qsTr("编码 %1 · extern C %2 · 导出宏 %3 · 函数 %4")
-                                                            .arg(modelData.encoding)
-                                                            .arg(modelData.externC ? qsTr("有") : qsTr("无"))
-                                                            .arg(modelData.declspec ? qsTr("有") : qsTr("无"))
-                                                            .arg((modelData.functions || []).length)
-                                                          : qsTr("%1 · %2 · 已识别符号 %3 · 缺失 %4")
-                                                            .arg(modelData.architecture)
-                                                            .arg(modelData.type)
-                                                            .arg((modelData.foundSymbols || []).length)
-                                                            .arg((modelData.missingSymbols || []).length)
-                                                    color: window.secondaryInk
-                                                    font.pixelSize: 12
-                                                    elide: Text.ElideRight
-                                                }
-                                                Text {
-                                                    visible: modelData.encoding === undefined
-                                                             && (modelData.missingSymbols || []).length > 0
-                                                    Layout.fillWidth: true
-                                                    text: qsTr("缺失：") + (modelData.missingSymbols || []).join("、")
-                                                    color: window.red
-                                                    font.pixelSize: 12
-                                                    elide: Text.ElideRight
-                                                }
+                                spacing: 5
+                                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                                model: modelData.kind === "header"
+                                       ? (staticModelDetailPopup.detail.headers || [])
+                                       : (staticModelDetailPopup.detail.libraries || [])
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 70
+                                    radius: 6
+                                    color: modelData.pass ? "#f8fafc" : window.redPale
+                                    border.color: modelData.pass ? window.line : "#efb6ba"
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        spacing: 4
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: modelData.name
+                                                color: window.ink
+                                                font.pixelSize: 12
+                                                font.weight: Font.DemiBold
+                                                elide: Text.ElideMiddle
+                                                ToolTip.visible: staticFileMouse.containsMouse
+                                                ToolTip.text: modelData.path
+                                                MouseArea { id: staticFileMouse; anchors.fill: parent; hoverEnabled: true }
+                                            }
+                                            Text {
+                                                text: modelData.pass ? qsTr("通过") : qsTr("需处理")
+                                                color: modelData.pass ? window.green : window.red
+                                                font.pixelSize: 12
+                                                font.weight: Font.DemiBold
                                             }
                                         }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.encoding !== undefined
+                                                  ? qsTr("编码 %1 · extern C %2 · 导出宏 %3 · 函数 %4")
+                                                    .arg(modelData.encoding)
+                                                    .arg(modelData.externC ? qsTr("有") : qsTr("无"))
+                                                    .arg(modelData.declspec ? qsTr("有") : qsTr("无"))
+                                                    .arg((modelData.functions || []).length)
+                                                  : qsTr("%1 · %2 · 已识别符号 %3 · 缺失 %4")
+                                                    .arg(modelData.architecture)
+                                                    .arg(modelData.type)
+                                                    .arg((modelData.foundSymbols || []).length)
+                                                    .arg((modelData.missingSymbols || []).length)
+                                            color: window.secondaryInk
+                                            font.pixelSize: 12
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            visible: modelData.encoding === undefined
+                                                     && (modelData.missingSymbols || []).length > 0
+                                            Layout.fillWidth: true
+                                            text: qsTr("缺失：") + (modelData.missingSymbols || []).join("、")
+                                            color: window.red
+                                            font.pixelSize: 12
+                                            elide: Text.ElideRight
+                                        }
                                     }
-                                    Text {
-                                        visible: (modelData.kind === "header"
-                                                  ? (staticModelDetailPopup.detail.headers || []).length
-                                                  : (staticModelDetailPopup.detail.libraries || []).length) === 0
-                                        width: parent.width
-                                        height: 70
-                                        text: modelData.kind === "header" ? qsTr("未发现头文件") : qsTr("未发现 LIB 文件")
-                                        color: window.secondaryInk
-                                        font.pixelSize: 12
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: (modelData.kind === "header"
+                                              ? (staticModelDetailPopup.detail.headers || []).length
+                                              : (staticModelDetailPopup.detail.libraries || []).length) === 0
+                                    text: modelData.kind === "header" ? qsTr("未发现头文件") : qsTr("未发现 LIB 文件")
+                                    color: window.secondaryInk
+                                    font.pixelSize: 12
                                 }
                             }
                         }
@@ -5795,53 +5788,46 @@ ApplicationWindow {
                             }
                         }
                         Rectangle { Layout.fillWidth: true; height: 1; color: window.line }
-                        ScrollView {
+                        ListView {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            Column {
-                                width: parent.width
-                                spacing: 4
-                                Repeater {
-                                    model: dllDetailPopup.detail.dependencies || []
-                                    delegate: Rectangle {
-                                        width: parent.width
-                                        height: 42
-                                        radius: 5
-                                        color: modelData.found ? "#f8fafc" : window.redPale
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 9
-                                            anchors.rightMargin: 9
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: modelData.name
-                                                color: window.ink
-                                                font.pixelSize: 12
-                                                elide: Text.ElideMiddle
-                                                ToolTip.visible: dependencyMouse.containsMouse && modelData.path.length > 0
-                                                ToolTip.text: modelData.path
-                                                MouseArea { id: dependencyMouse; anchors.fill: parent; hoverEnabled: true }
-                                            }
-                                            Text {
-                                                text: modelData.found ? qsTr("已找到") : qsTr("缺失")
-                                                color: modelData.found ? window.green : window.red
-                                                font.pixelSize: 12
-                                                font.weight: Font.DemiBold
-                                            }
-                                        }
+                            spacing: 4
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            model: dllDetailPopup.detail.dependencies || []
+                            delegate: Rectangle {
+                                width: ListView.view.width
+                                height: 42
+                                radius: 5
+                                color: modelData.found ? "#f8fafc" : window.redPale
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 9
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.name
+                                        color: window.ink
+                                        font.pixelSize: 12
+                                        elide: Text.ElideMiddle
+                                        ToolTip.visible: dependencyMouse.containsMouse && modelData.path.length > 0
+                                        ToolTip.text: modelData.path
+                                        MouseArea { id: dependencyMouse; anchors.fill: parent; hoverEnabled: true }
+                                    }
+                                    Text {
+                                        text: modelData.found ? qsTr("已找到") : qsTr("缺失")
+                                        color: modelData.found ? window.green : window.red
+                                        font.pixelSize: 12
+                                        font.weight: Font.DemiBold
                                     }
                                 }
-                                Text {
-                                    visible: (dllDetailPopup.detail.dependencies || []).length === 0
-                                    width: parent.width
-                                    height: 50
-                                    text: qsTr("未发现导入依赖")
-                                    color: window.secondaryInk
-                                    font.pixelSize: 12
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                visible: (dllDetailPopup.detail.dependencies || []).length === 0
+                                text: qsTr("未发现导入依赖")
+                                color: window.secondaryInk
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -5868,56 +5854,49 @@ ApplicationWindow {
                             }
                         }
                         Rectangle { Layout.fillWidth: true; height: 1; color: window.line }
-                        ScrollView {
+                        ListView {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            Column {
-                                width: parent.width
-                                spacing: 4
-                                Repeater {
-                                    model: dllDetailPopup.detail.exportedSymbols || []
-                                    delegate: Rectangle {
-                                        width: parent.width
-                                        height: 36
-                                        radius: 5
-                                        color: modelData.required ? window.tealPale : "#f8fafc"
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 9
-                                            anchors.rightMargin: 9
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: modelData.name
-                                                color: window.ink
-                                                font.pixelSize: 12
-                                                elide: Text.ElideMiddle
-                                            }
-                                            Text {
-                                                visible: modelData.required
-                                                text: qsTr("必要接口")
-                                                color: window.tealDark
-                                                font.pixelSize: 12
-                                                font.weight: Font.DemiBold
-                                            }
-                                            Text {
-                                                text: "#" + modelData.ordinal
-                                                color: window.secondaryInk
-                                                font.pixelSize: 12
-                                            }
-                                        }
+                            spacing: 4
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            model: dllDetailPopup.detail.exportedSymbols || []
+                            delegate: Rectangle {
+                                width: ListView.view.width
+                                height: 36
+                                radius: 5
+                                color: modelData.required ? window.tealPale : "#f8fafc"
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 9
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.name
+                                        color: window.ink
+                                        font.pixelSize: 12
+                                        elide: Text.ElideMiddle
+                                    }
+                                    Text {
+                                        visible: modelData.required
+                                        text: qsTr("必要接口")
+                                        color: window.tealDark
+                                        font.pixelSize: 12
+                                        font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        text: "#" + modelData.ordinal
+                                        color: window.secondaryInk
+                                        font.pixelSize: 12
                                     }
                                 }
-                                Text {
-                                    visible: (dllDetailPopup.detail.exportedSymbols || []).length === 0
-                                    width: parent.width
-                                    height: 50
-                                    text: qsTr("未解析到导出接口")
-                                    color: window.secondaryInk
-                                    font.pixelSize: 12
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                visible: (dllDetailPopup.detail.exportedSymbols || []).length === 0
+                                text: qsTr("未解析到导出接口")
+                                color: window.secondaryInk
+                                font.pixelSize: 12
                             }
                         }
                     }
@@ -6049,119 +6028,112 @@ ApplicationWindow {
                 }
             }
 
-            ScrollView {
+            ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
                 clip: true
-                Column {
-                    width: parent.width
-                    spacing: 7
-                    Repeater {
-                        model: staticCheckPopup.section === "header" ? (staticCheckPopup.report.headers || [])
-                               : (staticCheckPopup.section === "lib" ? (staticCheckPopup.report.libraries || [])
-                                  : (staticCheckPopup.report.dlls || []))
-                        delegate: Rectangle {
-                            width: parent.width
-                            height: staticCheckPopup.section === "dll" ? 118 : 92
-                            radius: 7
-                            color: "white"
-                            border.color: modelData.pass ? window.line : "#edc08a"
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 5
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: modelData.name
-                                        color: window.ink
-                                        font.pixelSize: 12
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideMiddle
-                                    }
-                                    Text {
-                                        visible: staticCheckPopup.section === "dll"
-                                        text: (modelData.configuration || "") + " · " + (modelData.architecture || "")
-                                        color: window.secondaryInk
-                                        font.pixelSize: 12
-                                    }
-                                    Rectangle {
-                                        width: itemState.implicitWidth + 18
-                                        height: 24
-                                        radius: 12
-                                        color: modelData.pass ? window.greenPale : window.amberPale
-                                        Text {
-                                            id: itemState
-                                            anchors.centerIn: parent
-                                            text: modelData.pass ? qsTr("通过") : qsTr("需处理")
-                                            color: modelData.pass ? window.green : window.amber
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                        }
-                                    }
-                                }
+                spacing: 7
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                model: staticCheckPopup.section === "header" ? (staticCheckPopup.report.headers || [])
+                       : (staticCheckPopup.section === "lib" ? (staticCheckPopup.report.libraries || [])
+                          : (staticCheckPopup.report.dlls || []))
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: staticCheckPopup.section === "dll" ? 118 : 92
+                    radius: 7
+                    color: "white"
+                    border.color: modelData.pass ? window.line : "#edc08a"
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 5
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.name
+                                color: window.ink
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideMiddle
+                            }
+                            Text {
+                                visible: staticCheckPopup.section === "dll"
+                                text: (modelData.configuration || "") + " · " + (modelData.architecture || "")
+                                color: window.secondaryInk
+                                font.pixelSize: 12
+                            }
+                            Rectangle {
+                                width: itemState.implicitWidth + 18
+                                height: 24
+                                radius: 12
+                                color: modelData.pass ? window.greenPale : window.amberPale
                                 Text {
-                                    Layout.fillWidth: true
-                                    text: staticCheckPopup.section === "header"
-                                          ? qsTr("编码 %1 · extern C %2 · 导出声明 %3 · pack %4 · 函数 %5")
-                                            .arg(modelData.encoding || "N/A")
-                                            .arg(modelData.externC ? qsTr("有") : qsTr("无"))
-                                            .arg(modelData.declspec ? qsTr("有") : qsTr("无"))
-                                            .arg(modelData.pack ? qsTr("有") : qsTr("无"))
-                                            .arg((modelData.functions || []).length)
-                                          : (staticCheckPopup.section === "lib"
-                                             ? qsTr("%1 · %2 · 已发现符号 %3 · 缺失 %4")
-                                               .arg(modelData.architecture || "N/A")
-                                               .arg(modelData.type || "")
-                                               .arg((modelData.symbols || []).length)
-                                               .arg((modelData.missing || []).length)
-                                             : qsTr("PE %1 · %2 · 缺失依赖 %3 · 缺失导出 %4")
-                                               .arg(modelData.pePass ? qsTr("通过") : qsTr("失败"))
-                                               .arg(modelData.crt || "N/A")
-                                               .arg(modelData.missingDependencies || 0)
-                                               .arg(modelData.missingExports || 0))
-                                    color: window.secondaryInk
+                                    id: itemState
+                                    anchors.centerIn: parent
+                                    text: modelData.pass ? qsTr("通过") : qsTr("需处理")
+                                    color: modelData.pass ? window.green : window.amber
                                     font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                }
-                                Text {
-                                    visible: staticCheckPopup.section === "dll"
-                                    Layout.fillWidth: true
-                                    text: qsTr("加载：%1 · 已绑定 %2 · 缺失 %3%4")
-                                        .arg(modelData.loadState || "N/A")
-                                        .arg(modelData.boundSymbols || 0)
-                                        .arg(modelData.missingSymbols || 0)
-                                        .arg((modelData.loadError || "").length > 0 ? qsTr(" · ") + modelData.loadError : "")
-                                    color: modelData.loadPass ? window.secondaryInk : window.red
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.path || ""
-                                    color: "#8491a2"
-                                    font.pixelSize: 8
-                                    elide: Text.ElideMiddle
+                                    font.weight: Font.Bold
                                 }
                             }
                         }
+                        Text {
+                            Layout.fillWidth: true
+                            text: staticCheckPopup.section === "header"
+                                  ? qsTr("编码 %1 · extern C %2 · 导出声明 %3 · pack %4 · 函数 %5")
+                                    .arg(modelData.encoding || "N/A")
+                                    .arg(modelData.externC ? qsTr("有") : qsTr("无"))
+                                    .arg(modelData.declspec ? qsTr("有") : qsTr("无"))
+                                    .arg(modelData.pack ? qsTr("有") : qsTr("无"))
+                                    .arg((modelData.functions || []).length)
+                                  : (staticCheckPopup.section === "lib"
+                                     ? qsTr("%1 · %2 · 已发现符号 %3 · 缺失 %4")
+                                       .arg(modelData.architecture || "N/A")
+                                       .arg(modelData.type || "")
+                                       .arg((modelData.symbols || []).length)
+                                       .arg((modelData.missing || []).length)
+                                     : qsTr("PE %1 · %2 · 缺失依赖 %3 · 缺失导出 %4")
+                                       .arg(modelData.pePass ? qsTr("通过") : qsTr("失败"))
+                                       .arg(modelData.crt || "N/A")
+                                       .arg(modelData.missingDependencies || 0)
+                                       .arg(modelData.missingExports || 0))
+                            color: window.secondaryInk
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            visible: staticCheckPopup.section === "dll"
+                            Layout.fillWidth: true
+                            text: qsTr("加载：%1 · 已绑定 %2 · 缺失 %3%4")
+                                .arg(modelData.loadState || "N/A")
+                                .arg(modelData.boundSymbols || 0)
+                                .arg(modelData.missingSymbols || 0)
+                                .arg((modelData.loadError || "").length > 0 ? qsTr(" · ") + modelData.loadError : "")
+                            color: modelData.loadPass ? window.secondaryInk : window.red
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.path || ""
+                            color: "#8491a2"
+                            font.pixelSize: 8
+                            elide: Text.ElideMiddle
+                        }
                     }
-                    Text {
-                        width: parent.width
-                        height: 90
-                        visible: (staticCheckPopup.section === "header" ? (staticCheckPopup.report.headers || [])
-                                  : (staticCheckPopup.section === "lib" ? (staticCheckPopup.report.libraries || [])
-                                     : (staticCheckPopup.report.dlls || []))).length === 0
-                        text: qsTr("此分类没有可检查的文件")
-                        color: window.secondaryInk
-                        font.pixelSize: 11
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: (staticCheckPopup.section === "header" ? (staticCheckPopup.report.headers || [])
+                              : (staticCheckPopup.section === "lib" ? (staticCheckPopup.report.libraries || [])
+                                 : (staticCheckPopup.report.dlls || []))).length === 0
+                    text: qsTr("此分类没有可检查的文件")
+                    color: window.secondaryInk
+                    font.pixelSize: 12
                 }
             }
         }
@@ -6642,87 +6614,81 @@ ApplicationWindow {
                 }
             }
 
-            ScrollView {
+            ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
                 clip: true
-                Column {
-                    width: parent.width
-                    spacing: 5
-                    Repeater {
-                        model: precheckMultiObjectDetailPopup.detail.objects || []
-                        delegate: Rectangle {
-                            width: parent.width
-                            height: Math.max(54, objectDetailText.implicitHeight + 20)
-                            radius: 6
-                            color: modelData.exception || modelData.baselineReturn !== 0
-                                   || modelData.interleavedReturn !== 0
-                                   || Number(modelData.deviation) > Number(precheckMultiObjectDetailPopup.detail.tolerance || 0)
-                                   ? window.redPale : "white"
-                            border.color: window.line
-                            RowLayout {
+                spacing: 6
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                model: precheckMultiObjectDetailPopup.detail.objects || []
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: Math.max(50, objectContent.implicitHeight + 16)
+                    radius: 6
+                    color: modelData.exception || modelData.baselineReturn !== 0
+                           || modelData.interleavedReturn !== 0
+                           || Number(modelData.deviation) > Number(precheckMultiObjectDetailPopup.detail.tolerance || 0)
+                           ? window.redPale : "white"
+                    border.color: window.line
+                    RowLayout {
+                        id: objectContent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 8
+                        Text {
+                            Layout.preferredWidth: 162
+                            text: (modelData.modelName || qsTr("未命名")) + " / #" + modelData.objectId
+                            color: window.ink
+                            font.pixelSize: 12
+                            elide: Text.ElideMiddle
+                        }
+                        Text { Layout.preferredWidth: 72; text: modelData.baselineReturn; color: modelData.baselineReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
+                        Text { Layout.preferredWidth: 72; text: modelData.interleavedReturn; color: modelData.interleavedReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
+                        Text {
+                            Layout.preferredWidth: 84
+                            text: NumberFormat.toCompact(modelData.deviation || 0, 12)
+                            color: window.secondaryInk
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                            MouseArea {
                                 anchors.fill: parent
-                                anchors.leftMargin: 9
-                                anchors.rightMargin: 9
-                                spacing: 8
-                                Text {
-                                    Layout.preferredWidth: 162
-                                    text: (modelData.modelName || qsTr("未命名")) + " / #" + modelData.objectId
-                                    color: window.ink
-                                    font.pixelSize: 12
-                                    elide: Text.ElideMiddle
-                                }
-                                Text { Layout.preferredWidth: 72; text: modelData.baselineReturn; color: modelData.baselineReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
-                                Text { Layout.preferredWidth: 72; text: modelData.interleavedReturn; color: modelData.interleavedReturn === 0 ? window.green : window.red; font.pixelSize: 12 }
-                                Text {
-                                    Layout.preferredWidth: 84
-                                    text: NumberFormat.toCompact(modelData.deviation || 0, 12)
-                                    color: window.secondaryInk
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        acceptedButtons: Qt.NoButton
-                                        ToolTip.visible: containsMouse
-                                        // 完整数值（普通小数）在悬停时显示
-                                        ToolTip.text: NumberFormat.toPlain(modelData.deviation || 0)
-                                    }
-                                }
-                                Text {
-                                    Layout.preferredWidth: 68
-                                    text: modelData.exception ? qsTr("SEH 异常")
-                                          : (modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? qsTr("失败") : qsTr("完成"))
-                                    color: modelData.exception || modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? window.red : window.green
-                                    font.pixelSize: 12
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    id: objectDetailText
-                                    Layout.fillWidth: true
-                                    text: modelData.detail || (modelData.exception
-                                          ? qsTr("异常码 %1，故障步 %2").arg(modelData.exceptionCode).arg(modelData.faultStep)
-                                          : qsTr("基线与交错执行完成"))
-                                    color: window.secondaryInk
-                                    font.pixelSize: 12
-                                    wrapMode: Text.WordWrap
-                                }
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: NumberFormat.toPlain(modelData.deviation || 0)
                             }
                         }
+                        Text {
+                            Layout.preferredWidth: 68
+                            text: modelData.exception ? qsTr("SEH 异常")
+                                  : (modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? qsTr("失败") : qsTr("完成"))
+                            color: modelData.exception || modelData.baselineReturn !== 0 || modelData.interleavedReturn !== 0 ? window.red : window.green
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.detail || (modelData.exception
+                                  ? qsTr("异常码 %1，故障步 %2").arg(modelData.exceptionCode).arg(modelData.faultStep)
+                                  : qsTr("基线与交错执行完成"))
+                            color: window.secondaryInk
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                        }
                     }
-                    Text {
-                        visible: (precheckMultiObjectDetailPopup.detail.objects || []).length === 0
-                        width: parent.width
-                        height: 90
-                        text: qsTr("没有对象执行明细")
-                        color: window.secondaryInk
-                        font.pixelSize: 11
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: (precheckMultiObjectDetailPopup.detail.objects || []).length === 0
+                    text: qsTr("没有对象执行明细")
+                    color: window.secondaryInk
+                    font.pixelSize: 12
                 }
             }
         }
@@ -6786,91 +6752,84 @@ ApplicationWindow {
                 }
             }
 
-            ScrollView {
+            ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
                 clip: true
-                Column {
-                    width: parent.width
-                    spacing: 7
-                    Repeater {
-                        model: appController.resultHeaderConflicts.issues || []
-                        delegate: Rectangle {
-                            width: parent.width
-                            height: conflictIssueColumn.implicitHeight + 22
-                            radius: 7
-                            color: "white"
-                            border.color: modelData.severity === "FAIL" ? "#efb6ba" : "#efd39a"
-                            ColumnLayout {
-                                id: conflictIssueColumn
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.margins: 11
-                                spacing: 6
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Rectangle {
-                                        implicitWidth: conflictSeverity.implicitWidth + 16
-                                        implicitHeight: 23
-                                        radius: 11
-                                        color: modelData.severity === "FAIL" ? window.redPale : window.amberPale
-                                        Text {
-                                            id: conflictSeverity
-                                            anchors.centerIn: parent
-                                            text: modelData.severity
-                                            color: modelData.severity === "FAIL" ? window.red : window.amber
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                        }
-                                    }
-                                    Text {
-                                        text: modelData.category === "DUPLICATE_TYPE" ? qsTr("类型重名")
-                                              : (modelData.category === "ODR_CONFLICT" ? qsTr("ODR 冲突")
-                                                 : qsTr("命名空间污染"))
-                                        color: window.secondaryInk
-                                        font.pixelSize: 12
-                                    }
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: modelData.symbol
-                                        color: window.ink
-                                        font.pixelSize: 13
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideMiddle
-                                    }
-                                }
+                spacing: 8
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                model: appController.resultHeaderConflicts.issues || []
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: conflictIssueColumn.implicitHeight + 22
+                    radius: 7
+                    color: "white"
+                    border.color: modelData.severity === "FAIL" ? "#efb6ba" : "#efd39a"
+                    ColumnLayout {
+                        id: conflictIssueColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 11
+                        spacing: 6
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Rectangle {
+                                implicitWidth: conflictSeverity.implicitWidth + 16
+                                implicitHeight: 23
+                                radius: 11
+                                color: modelData.severity === "FAIL" ? window.redPale : window.amberPale
                                 Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.detail
-                                    color: window.secondaryInk
+                                    id: conflictSeverity
+                                    anchors.centerIn: parent
+                                    text: modelData.severity
+                                    color: modelData.severity === "FAIL" ? window.red : window.amber
                                     font.pixelSize: 12
-                                    wrapMode: Text.WordWrap
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: qsTr("涉及文件：") + (modelData.files || []).join("\n")
-                                    color: window.tealDark
-                                    font.pixelSize: 12
-                                    wrapMode: Text.WrapAnywhere
+                                    font.weight: Font.Bold
                                 }
                             }
+                            Text {
+                                text: modelData.category === "DUPLICATE_TYPE" ? qsTr("类型重名")
+                                      : (modelData.category === "ODR_CONFLICT" ? qsTr("ODR 冲突")
+                                         : qsTr("命名空间污染"))
+                                color: window.secondaryInk
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.symbol
+                                color: window.ink
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideMiddle
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.detail
+                            color: window.secondaryInk
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("涉及文件：") + (modelData.files || []).join("\n")
+                            color: window.tealDark
+                            font.pixelSize: 12
+                            wrapMode: Text.WrapAnywhere
                         }
                     }
-                    Text {
-                        visible: !(appController.resultHeaderConflicts.issues
-                                   && appController.resultHeaderConflicts.issues.length > 0)
-                        width: parent.width
-                        height: 100
-                        text: qsTr("未发现头文件冲突或污染风险")
-                        color: window.green
-                        font.pixelSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: !(appController.resultHeaderConflicts.issues
+                               && appController.resultHeaderConflicts.issues.length > 0)
+                    text: qsTr("未发现头文件冲突或污染风险")
+                    color: window.green
+                    font.pixelSize: 12
                 }
             }
         }
@@ -6953,74 +6912,69 @@ ApplicationWindow {
                 }
             }
 
-            ScrollView {
+            ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
                 clip: true
-                Column {
-                    width: parent.width
-                    spacing: 5
-                    Repeater {
-                        model: concurrencyDetailPopup.detail.workers || []
-                        delegate: Rectangle {
-                            width: parent.width
-                            height: Math.max(52, workerMessage.implicitHeight + 20)
-                            radius: 6
-                            color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
-                                   ? window.redPale : "white"
-                            border.color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
-                                          ? "#efb6ba" : window.line
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 9
-                                anchors.rightMargin: 9
-                                spacing: 8
-                                Text { Layout.preferredWidth: 48; text: "#" + modelData.threadId; color: window.secondaryInk; font.pixelSize: 12 }
-                                Text {
-                                    Layout.preferredWidth: 152
-                                    text: (modelData.modelName || qsTr("未命名")) + " / " + modelData.instanceId
-                                    color: window.ink
-                                    font.pixelSize: 12
-                                    elide: Text.ElideMiddle
-                                }
-                                Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 ? window.green : window.red; font.pixelSize: 12 }
-                                Text {
-                                    Layout.preferredWidth: 72
-                                    text: modelData.exception ? qsTr("SEH 异常")
-                                          : (modelData.userFail || modelData.returnCode !== 0 ? qsTr("失败") : qsTr("成功"))
-                                    color: modelData.exception || modelData.userFail || modelData.returnCode !== 0 ? window.red : window.green
-                                    font.pixelSize: 12
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    id: workerMessage
-                                    Layout.fillWidth: true
-                                    text: {
-                                        var parts = []
-                                        if ((modelData.randomSummary || "").length > 0) parts.push(modelData.randomSummary)
-                                        if ((modelData.error || "").length > 0) parts.push(modelData.error)
-                                        return parts.length > 0 ? parts.join(" · ") : qsTr("执行完成")
-                                    }
-                                    color: window.secondaryInk
-                                    font.pixelSize: 12
-                                    wrapMode: Text.WordWrap
-                                }
+                spacing: 6
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                model: concurrencyDetailPopup.detail.workers || []
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: Math.max(50, workerContent.implicitHeight + 16)
+                    radius: 6
+                    color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
+                           ? window.redPale : "white"
+                    border.color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
+                                  ? "#efb6ba" : window.line
+                    RowLayout {
+                        id: workerContent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 8
+                        Text { Layout.preferredWidth: 48; text: "#" + modelData.threadId; color: window.secondaryInk; font.pixelSize: 12 }
+                        Text {
+                            Layout.preferredWidth: 152
+                            text: (modelData.modelName || qsTr("未命名")) + " / " + modelData.instanceId
+                            color: window.ink
+                            font.pixelSize: 12
+                            elide: Text.ElideMiddle
+                        }
+                        Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 ? window.green : window.red; font.pixelSize: 12 }
+                        Text {
+                            Layout.preferredWidth: 72
+                            text: modelData.exception ? qsTr("SEH 异常")
+                                  : (modelData.userFail || modelData.returnCode !== 0 ? qsTr("失败") : qsTr("成功"))
+                            color: modelData.exception || modelData.userFail || modelData.returnCode !== 0 ? window.red : window.green
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: {
+                                var parts = []
+                                if ((modelData.randomSummary || "").length > 0) parts.push(modelData.randomSummary)
+                                if ((modelData.error || "").length > 0) parts.push(modelData.error)
+                                return parts.length > 0 ? parts.join(" · ") : qsTr("执行完成")
                             }
+                            color: window.secondaryInk
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
                         }
                     }
-                    Text {
-                        visible: (concurrencyDetailPopup.detail.workers || []).length === 0
-                        width: parent.width
-                        height: 80
-                        text: qsTr("没有线程执行明细")
-                        color: window.secondaryInk
-                        font.pixelSize: 11
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: (concurrencyDetailPopup.detail.workers || []).length === 0
+                    text: qsTr("没有线程执行明细")
+                    color: window.secondaryInk
+                    font.pixelSize: 12
                 }
             }
         }
