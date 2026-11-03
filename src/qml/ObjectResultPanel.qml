@@ -66,6 +66,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             spacing: 8
             Rectangle {
                 width: 12
@@ -97,6 +98,7 @@ Item {
 
         Text {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             text: panel.verdict.length > 0 ? panel.summary : panel.emptyHint
             color: "#60708a"
             font.pixelSize: 13
@@ -105,6 +107,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             visible: panel.verdict.length > 0
             spacing: 16
             Text {
@@ -137,6 +140,7 @@ Item {
         // 对象选择：切换后左右两张表同时刷新为该对象的坐标。
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
             visible: panel.verdict.length > 0
             spacing: 10
             Text { text: qsTr("查看对象"); color: "#60708a"; font.pixelSize: 11 }

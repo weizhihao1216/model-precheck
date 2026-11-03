@@ -18,6 +18,7 @@ Rectangle {
     property color subColor: "#60708a"
 
     Layout.fillWidth: true
+    Layout.fillHeight: false
     Layout.preferredHeight: 62
     Layout.minimumHeight: 62
     Layout.maximumHeight: 62

@@ -851,7 +851,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 70
                 Layout.preferredHeight: 70
+                Layout.maximumHeight: 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -1208,7 +1211,10 @@ ApplicationWindow {
             spacing: 0
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 70
                 Layout.preferredHeight: 70
+                Layout.maximumHeight: 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -1711,10 +1717,10 @@ ApplicationWindow {
             if (!checked && pos >= 0) next.splice(pos, 1)
             selectedIndexes = next
         }
-        width: Math.min(window.width - 100, 900)
-        height: Math.min(window.height - window.header.height - 70, 680)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 960)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -1878,6 +1884,7 @@ ApplicationWindow {
                         // 本测试项的运行参数（默认值来自「设置 · 一键预检默认值」，此处可为当次测试调整）
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
                             visible: specialtyTestDialog.testType === 0
                                     || specialtyTestDialog.testType === 2
                             spacing: 10
@@ -1953,7 +1960,10 @@ ApplicationWindow {
                         }
                         Rectangle {
                             Layout.fillWidth: true
+                            Layout.fillHeight: false
+                            Layout.minimumHeight: 70
                             Layout.preferredHeight: 70
+                            Layout.maximumHeight: 70
                             radius: 6
                             color: appController.specialtyBusy ? "#fff8eb" : "#f7fafc"
                             border.color: appController.specialtyBusy ? "#ead19a" : window.line
@@ -2145,7 +2155,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: window.width < 1350 ? 56 : 70
+                Layout.fillHeight: false
+                Layout.minimumHeight: window.width < 1350 ? 56 : 70
+                Layout.preferredHeight: window.width < 1350 ? 56 : 70
+                Layout.maximumHeight: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -3420,10 +3433,10 @@ ApplicationWindow {
     Popup {
         id: packageContentsPopup
         property string fileFilter: qsTr("全部")
-        width: Math.min(window.width - 100, 860)
-        height: Math.min(window.height - window.header.height - 70, 680)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 860)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -3460,8 +3473,11 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 52
+                Layout.preferredHeight: 52
+                Layout.maximumHeight: 52
                 Layout.margins: 14
-                height: 52
                 radius: 7
                 color: "#f8fafc"
                 border.color: window.line
@@ -3481,6 +3497,10 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 34
+                Layout.preferredHeight: 34
+                Layout.maximumHeight: 34
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 spacing: 7
@@ -4150,7 +4170,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: window.width < 1350 ? 56 : 70
+                Layout.fillHeight: false
+                Layout.minimumHeight: window.width < 1350 ? 56 : 70
+                Layout.preferredHeight: window.width < 1350 ? 56 : 70
+                Layout.maximumHeight: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {
@@ -4386,6 +4409,10 @@ ApplicationWindow {
                     RowLayout {
                         visible: appController.hasResult
                         Layout.fillWidth: true
+                        Layout.fillHeight: false
+                        Layout.minimumHeight: 58
+                        Layout.preferredHeight: 58
+                        Layout.maximumHeight: 58
                         spacing: 12
                         Repeater {
                             model: [
@@ -4432,7 +4459,10 @@ ApplicationWindow {
                     RowLayout {
                         visible: appController.hasResult
                         Layout.fillWidth: true
+                        Layout.fillHeight: false
+                        Layout.minimumHeight: 32
                         Layout.preferredHeight: 32
+                        Layout.maximumHeight: 32
                         spacing: 7
                         Repeater {
                             model: [qsTr("全部"), qsTr("未通过"), qsTr("警告"), qsTr("通过"), qsTr("未测/跳过")]
@@ -5510,10 +5540,10 @@ ApplicationWindow {
     Popup {
         id: staticModelDetailPopup
         property var detail: ({ "headers": [], "libraries": [] })
-        width: Math.min(window.width - 100, 1080)
-        height: Math.min(window.height - window.header.height - 70, 690)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -5531,7 +5561,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 62
                 Layout.preferredHeight: 62
+                Layout.maximumHeight: 62
                 Layout.margins: 14
                 radius: 7
                 color: staticModelDetailPopup.detail.consistencyPass ? window.greenPale : window.amberPale
@@ -5606,6 +5639,7 @@ ApplicationWindow {
                             ListView {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
+                                Layout.minimumHeight: 180
                                 clip: true
                                 spacing: 5
                                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -5691,10 +5725,10 @@ ApplicationWindow {
         id: dllDetailPopup
         property string modelName: ""
         property var detail: ({ "dependencies": [], "exportedSymbols": [] })
-        width: Math.min(window.width - 100, 1080)
-        height: Math.min(window.height - window.header.height - 70, 690)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -5728,6 +5762,7 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
                 Layout.preferredHeight: 64
                 Layout.minimumHeight: 64
                 Layout.maximumHeight: 64
@@ -5970,10 +6005,10 @@ ApplicationWindow {
         id: staticCheckPopup
         property string section: "header"
         property var report: appController.specialtyStaticReport
-        width: Math.min(window.width - 100, 1080)
-        height: Math.min(window.height - window.header.height - 70, 690)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -6005,7 +6040,10 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 44
                 Layout.preferredHeight: 48
+                Layout.maximumHeight: 48
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 spacing: 8
@@ -6172,10 +6210,10 @@ ApplicationWindow {
                 return value === "弧度" ? qsTr("疑似弧度") : qsTr("经纬度（度）")
             return value.length > 0 ? value : qsTr("未知")
         }
-        width: Math.min(window.width - 100, 1080)
-        height: Math.min(window.height - window.header.height - 70, 690)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1080)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -6222,6 +6260,7 @@ ApplicationWindow {
             RowLayout {
                 visible: performanceDetailPopup.mode !== "trajectory"
                 Layout.fillWidth: true
+                Layout.fillHeight: false
                 Layout.minimumHeight: visible ? 70 : 0
                 Layout.preferredHeight: visible ? 70 : 0
                 Layout.maximumHeight: visible ? 70 : 0
@@ -6460,6 +6499,7 @@ ApplicationWindow {
                 visible: performanceDetailPopup.mode === "trajectory"
                          || performanceDetailPopup.mode === "combined"
                 Layout.fillWidth: true
+                Layout.fillHeight: false
                 Layout.minimumHeight: visible ? ((performanceDetailPopup.detail.trajectoryMessages || []).length > 0 ? 152 : 132) : 0
                 Layout.preferredHeight: visible ? ((performanceDetailPopup.detail.trajectoryMessages || []).length > 0 ? 152 : 132) : 0
                 Layout.maximumHeight: visible ? ((performanceDetailPopup.detail.trajectoryMessages || []).length > 0 ? 152 : 132) : 0
@@ -6482,7 +6522,10 @@ ApplicationWindow {
                     }
                     RowLayout {
                         Layout.fillWidth: true
+                        Layout.fillHeight: false
+                        Layout.minimumHeight: 56
                         Layout.preferredHeight: 56
+                        Layout.maximumHeight: 56
                         spacing: 8
                         Repeater {
                             model: [
@@ -7043,7 +7086,10 @@ ApplicationWindow {
             spacing: 0
             Rectangle {
                 Layout.fillWidth: true
-                height: window.width < 1350 ? 56 : 70
+                Layout.fillHeight: false
+                Layout.minimumHeight: window.width < 1350 ? 56 : 70
+                Layout.preferredHeight: window.width < 1350 ? 56 : 70
+                Layout.maximumHeight: window.width < 1350 ? 56 : 70
                 color: "white"
                 border.color: window.line
                 RowLayout {

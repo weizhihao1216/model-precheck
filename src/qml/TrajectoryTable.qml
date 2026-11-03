@@ -53,6 +53,10 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: false
+            Layout.minimumHeight: 22
+            Layout.preferredHeight: 22
+            Layout.maximumHeight: 22
             spacing: 4
             Text {
                 Layout.preferredWidth: 32
@@ -84,6 +88,7 @@ Rectangle {
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.minimumHeight: 80
             clip: true
             spacing: 1
             model: table.rows
