@@ -6050,6 +6050,7 @@ ApplicationWindow {
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
@@ -6546,10 +6547,10 @@ ApplicationWindow {
         id: precheckMultiObjectDetailPopup
         property var detail: ({ "objects": [] })
         readonly property real maxDeviationValue: Number(detail.maxDeviation || 0)
-        width: Math.min(window.width - 100, 1000)
-        height: Math.min(window.height - window.header.height - 70, 660)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1020)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -6566,8 +6567,14 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 78
-                Layout.margins: 14
+                Layout.fillHeight: false
+                Layout.minimumHeight: 74
+                Layout.preferredHeight: 74
+                Layout.maximumHeight: 74
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                Layout.topMargin: 12
+                Layout.bottomMargin: 8
                 spacing: 8
                 Repeater {
                     model: [
@@ -6618,7 +6625,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 32
                 Layout.preferredHeight: 32
+                Layout.maximumHeight: 32
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 color: "transparent"
@@ -6636,6 +6646,7 @@ ApplicationWindow {
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
@@ -6715,10 +6726,10 @@ ApplicationWindow {
 
     Popup {
         id: headerConflictPopup
-        width: Math.min(window.width - 100, 1000)
-        height: Math.min(window.height - window.header.height - 70, 660)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 1000)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -6735,8 +6746,14 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 76
-                Layout.margins: 14
+                Layout.fillHeight: false
+                Layout.minimumHeight: 74
+                Layout.preferredHeight: 74
+                Layout.maximumHeight: 74
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                Layout.topMargin: 12
+                Layout.bottomMargin: 8
                 spacing: 9
                 Repeater {
                     model: [
@@ -6774,6 +6791,7 @@ ApplicationWindow {
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
@@ -6857,10 +6875,10 @@ ApplicationWindow {
     Popup {
         id: concurrencyDetailPopup
         property var detail: ({ "workers": [] })
-        width: Math.min(window.width - 100, 980)
-        height: Math.min(window.height - window.header.height - 70, 660)
+        width: Math.min(window.width - (window.width < 1350 ? 40 : 100), 980)
+        height: Math.min(window.height - (window.height < 750 ? 30 : 60), 720)
         x: (window.width - width) / 2
-        y: 35
+        y: Math.max(10, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
@@ -6877,8 +6895,14 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 78
-                Layout.margins: 14
+                Layout.fillHeight: false
+                Layout.minimumHeight: 74
+                Layout.preferredHeight: 74
+                Layout.maximumHeight: 74
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                Layout.topMargin: 12
+                Layout.bottomMargin: 8
                 spacing: 8
                 Repeater {
                     model: [
@@ -6896,12 +6920,12 @@ ApplicationWindow {
                         border.color: window.line
                         Column {
                             anchors.centerIn: parent
-                            spacing: 2
+                            spacing: 3
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.value
                                 color: modelData.color
-                                font.pixelSize: 16
+                                font.pixelSize: 18
                                 font.weight: Font.Bold
                             }
                             Text {
@@ -6917,7 +6941,10 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.minimumHeight: 32
                 Layout.preferredHeight: 32
+                Layout.maximumHeight: 32
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 color: "transparent"
@@ -6934,6 +6961,7 @@ ApplicationWindow {
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
                 Layout.leftMargin: 14
                 Layout.rightMargin: 14
                 Layout.bottomMargin: 14
