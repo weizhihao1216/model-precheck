@@ -62,7 +62,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: panel.height < 250 ? 4 : 8
 
         RowLayout {
             Layout.fillWidth: true
@@ -170,7 +170,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 150
+            Layout.minimumHeight: panel.height < 250 ? 90 : 130
             visible: panel.verdict.length > 0
             spacing: 8
 
@@ -194,8 +194,8 @@ Item {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 6
+                        anchors.margins: panel.height < 250 ? 6 : 10
+                        spacing: panel.height < 250 ? 4 : 6
 
                         Text {
                             Layout.fillWidth: true
@@ -208,7 +208,7 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            implicitHeight: 26
+                            implicitHeight: panel.height < 250 ? 22 : 26
                             radius: 4
                             color: "#f1f5f9"
                             RowLayout {
@@ -258,7 +258,7 @@ Item {
 
                             delegate: RowLayout {
                                 width: pointList.width - 12
-                                height: 24
+                                height: panel.height < 250 ? 20 : 24
                                 spacing: 6
                                 Text {
                                     Layout.preferredWidth: 44

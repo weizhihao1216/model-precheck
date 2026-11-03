@@ -3640,15 +3640,15 @@ ApplicationWindow {
 
     Popup {
         id: multiObjectPopup
-        width: Math.min(window.width - 100, 1180)
-        height: Math.min(window.height - window.header.height - 60, 840)
+        width: Math.min(window.width - (window.width < 1350 ? 30 : 80), 1260)
+        height: Math.min(window.height - (window.height < 750 ? 20 : 50), 860)
         x: (window.width - width) / 2
-        y: 40
+        y: Math.max(8, (window.height - height) / 2)
         padding: 0
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape
-        background: Rectangle { radius: 11; color: "#f4f7fa"; border.color: window.line }
+        background: Rectangle { radius: 11; color: "#f4f7fa"; border.color: window.line; clip: true }
 
         contentItem: ColumnLayout {
             spacing: 0
@@ -3678,24 +3678,38 @@ ApplicationWindow {
                 onCloseRequested: multiObjectPopup.close()
             }
 
-            RowLayout {
+            Flickable {
+                id: multiObjectFlick
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 14
-                spacing: 14
+                clip: true
+                contentWidth: width
+                contentHeight: Math.max(height, multiObjectCardsRow.implicitHeight + (window.height < 750 ? 20 : 28))
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                // ==================== 左：单型号多对象 ====================
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.fillHeight: true
-                    radius: 9
-                    color: "white"
-                    border.color: window.line
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 14
-                        spacing: 10
+                RowLayout {
+                    id: multiObjectCardsRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: window.height < 750 ? 10 : 14
+                    height: Math.max(multiObjectFlick.height - (window.height < 750 ? 20 : 28), implicitHeight)
+                    spacing: window.height < 750 ? 10 : 14
+
+                    // ==================== 左：单型号多对象 ====================
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 380
+                        radius: 9
+                        color: "white"
+                        border.color: window.line
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: window.height < 750 ? 10 : 14
+                            spacing: window.height < 750 ? 7 : 10
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -3726,7 +3740,7 @@ ApplicationWindow {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            implicitHeight: 56
+                            implicitHeight: window.height < 750 ? 46 : 56
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
@@ -3819,7 +3833,7 @@ ApplicationWindow {
 
                         AppButton {
                             Layout.fillWidth: true
-                            implicitHeight: 40
+                            implicitHeight: window.height < 750 ? 34 : 40
                             text: appController.multiObjectBusy ? qsTr("执行中…") : qsTr("▶  执行单型号测试")
                             enabled: appController.selectedModelIndex >= 0 && !appController.multiObjectBusy
                             onClicked: appController.runSelectedMultiObject(
@@ -3831,12 +3845,14 @@ ApplicationWindow {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            Layout.minimumHeight: window.height < 750 ? 200 : 240
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
+                            clip: true
                             ObjectResultPanel {
                                 anchors.fill: parent
-                                anchors.margins: 12
+                                anchors.margins: window.height < 750 ? 8 : 12
                                 trajectorySeries: appController.multiObjectResultIsFleet
                                                   ? [] : appController.multiObjectTrajectories
                                 resultItems: appController.multiObjectResultIsFleet
@@ -3862,13 +3878,14 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
+                    Layout.minimumHeight: 380
                     radius: 9
                     color: "white"
                     border.color: window.line
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 14
-                        spacing: 10
+                        anchors.margins: window.height < 750 ? 10 : 14
+                        spacing: window.height < 750 ? 6 : 10
                         Text {
                             text: qsTr("跨型号对象交错")
                             color: window.ink
@@ -3885,8 +3902,8 @@ ApplicationWindow {
                         Flickable {
                             id: fleetListFlick
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 128
-                            Layout.minimumHeight: 90
+                            Layout.preferredHeight: window.height < 750 ? 84 : 116
+                            Layout.minimumHeight: 64
                             clip: true
                             contentWidth: width
                             contentHeight: fleetListColumn.implicitHeight + 4
@@ -3895,12 +3912,12 @@ ApplicationWindow {
                             ColumnLayout {
                                 id: fleetListColumn
                                 width: fleetListFlick.width - 12
-                                spacing: 6
+                                spacing: 4
                                 Repeater {
                                     model: appController.fleetMultiObjectModels
                                     delegate: Rectangle {
                                         Layout.fillWidth: true
-                                        height: 58
+                                        height: window.height < 750 ? 46 : 56
                                         radius: 6
                                         color: modelData.ready ? "#f8fafc" : "#f4f5f7"
                                         border.color: modelData.selected ? "#79cec7" : window.line
@@ -3998,7 +4015,7 @@ ApplicationWindow {
 
                         AppButton {
                             Layout.fillWidth: true
-                            implicitHeight: 40
+                            implicitHeight: window.height < 750 ? 34 : 40
                             text: appController.multiObjectBusy
                                   ? qsTr("正在测试…") : qsTr("▶  开始跨型号测试")
                             enabled: appController.modelCount >= 2 && !appController.multiObjectBusy
@@ -4010,13 +4027,14 @@ ApplicationWindow {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.minimumHeight: 240
+                            Layout.minimumHeight: window.height < 750 ? 200 : 240
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
+                            clip: true
                             ObjectResultPanel {
                                 anchors.fill: parent
-                                anchors.margins: 12
+                                anchors.margins: window.height < 750 ? 8 : 12
                                 trajectorySeries: appController.multiObjectResultIsFleet
                                                   ? appController.multiObjectTrajectories : []
                                 resultItems: appController.multiObjectResultIsFleet
@@ -4037,6 +4055,7 @@ ApplicationWindow {
                     }
                 }
             }
+        }
         }
 
         function loadValues() {
