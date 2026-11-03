@@ -3725,7 +3725,9 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
                         Layout.fillHeight: true
-                        Layout.minimumHeight: 380
+                        Layout.minimumHeight: singleResultPanel.verdict.length > 0
+                                              ? (window.height < 750 ? 360 : 400)
+                                              : (window.height < 750 ? 240 : 280)
                         implicitHeight: singleObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
                         Layout.preferredHeight: implicitHeight
                         radius: 9
@@ -3873,7 +3875,9 @@ ApplicationWindow {
                             id: singleResultRect
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.minimumHeight: window.height < 750 ? 200 : 240
+                            Layout.minimumHeight: singleResultPanel.verdict.length > 0
+                                                  ? (window.height < 750 ? 180 : 220)
+                                                  : (window.height < 750 ? 60 : 72)
                             implicitHeight: singleResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
                             Layout.preferredHeight: implicitHeight
                             radius: 7
@@ -3910,7 +3914,9 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 380
+                    Layout.minimumHeight: fleetResultPanel.verdict.length > 0
+                                          ? (window.height < 750 ? 360 : 400)
+                                          : (window.height < 750 ? 240 : 280)
                     implicitHeight: fleetObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
                     Layout.preferredHeight: implicitHeight
                     radius: 9
@@ -3937,7 +3943,8 @@ ApplicationWindow {
                         ListView {
                             id: fleetListView
                             Layout.fillWidth: true
-                            Layout.preferredHeight: window.height < 750 ? 96 : 124
+                            Layout.preferredHeight: window.height < 750 ? 100 : 124
+                            implicitHeight: Layout.preferredHeight
                             Layout.minimumHeight: 64
                             clip: true
                             spacing: 6
@@ -4053,7 +4060,9 @@ ApplicationWindow {
                             id: fleetResultRect
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            Layout.minimumHeight: window.height < 750 ? 200 : 240
+                            Layout.minimumHeight: fleetResultPanel.verdict.length > 0
+                                                  ? (window.height < 750 ? 180 : 220)
+                                                  : (window.height < 750 ? 60 : 72)
                             implicitHeight: fleetResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
                             Layout.preferredHeight: implicitHeight
                             radius: 7
