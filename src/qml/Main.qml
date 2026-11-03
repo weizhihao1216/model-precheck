@@ -3712,6 +3712,7 @@ ApplicationWindow {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: window.height < 750 ? 10 : 14
+                    implicitHeight: Math.max(singleObjectCard.implicitHeight, fleetObjectCard.implicitHeight)
                     height: Math.max(multiObjectFlick.height - (window.height < 750 ? 20 : 28), implicitHeight)
                     spacing: window.height < 750 ? 10 : 14
 
@@ -3723,6 +3724,7 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 380
                         implicitHeight: singleObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
+                        Layout.preferredHeight: implicitHeight
                         radius: 9
                         color: "white"
                         border.color: window.line
@@ -3869,6 +3871,7 @@ ApplicationWindow {
                             Layout.fillHeight: true
                             Layout.minimumHeight: window.height < 750 ? 200 : 240
                             implicitHeight: singleResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
+                            Layout.preferredHeight: implicitHeight
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
@@ -3905,6 +3908,7 @@ ApplicationWindow {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 380
                     implicitHeight: fleetObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
+                    Layout.preferredHeight: implicitHeight
                     radius: 9
                     color: "white"
                     border.color: window.line
@@ -4047,6 +4051,7 @@ ApplicationWindow {
                             Layout.fillHeight: true
                             Layout.minimumHeight: window.height < 750 ? 200 : 240
                             implicitHeight: fleetResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
+                            Layout.preferredHeight: implicitHeight
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line

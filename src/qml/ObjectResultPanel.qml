@@ -309,6 +309,16 @@ Item {
         }
 
         // 逐对象明细：点击某一行即可在上方两张表中查看该对象的坐标。
+
+        Text {
+            Layout.fillWidth: true
+            visible: panel.verdict.length > 0
+            text: qsTr("左右两表按行号一一对应：基线第 N 点与交错第 N 点为同一步的输出坐标；点击下方对象条目可切换查看对象。")
+            color: "#8794a6"
+            font.pixelSize: 11
+            wrapMode: Text.WordWrap
+        }
+
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -374,15 +384,6 @@ Item {
                     ToolTip.text: qsTr("偏差 %1").arg(NumberFormat.toPlain(modelData.deviation))
                 }
             }
-        }
-
-        Text {
-            Layout.fillWidth: true
-            visible: panel.verdict.length > 0
-            text: qsTr("左右两表按行号一一对应：基线第 N 点与交错第 N 点为同一步的输出坐标；点击下方对象条目可切换查看对象。")
-            color: "#8794a6"
-            font.pixelSize: 9
-            wrapMode: Text.WordWrap
         }
     }
 }
