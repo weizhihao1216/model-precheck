@@ -6,6 +6,7 @@ import "NumberFormat.js" as NumberFormat
 // 多对象测试的内嵌结果面板：结论 + 基线/交错坐标对照表（左右两张，逐行一一对应），无需弹出独立窗口。
 Item {
     id: panel
+    implicitHeight: panelCol.implicitHeight
 
     property var trajectorySeries: []
     property var resultItems: []
@@ -61,6 +62,7 @@ Item {
     onObjectEntriesChanged: if (currentObjectIndex >= objectEntries.length) currentObjectIndex = 0
 
     ColumnLayout {
+        id: panelCol
         anchors.fill: parent
         spacing: panel.height < 250 ? 4 : 8
 
@@ -175,6 +177,8 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: panel.height < 250 ? 90 : 130
+            Layout.preferredHeight: panel.height < 250 ? 110 : 140
+            implicitHeight: Layout.preferredHeight
             visible: panel.verdict.length > 0
             spacing: 8
 
@@ -250,7 +254,7 @@ Item {
                             Layout.fillHeight: true
                             clip: true
                             model: tableCard.tablePoints
-                            ScrollBar.vertical: ScrollBar { }
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                             // 两张表行数一致，滚动时保持同步，便于逐行比对。
                             onContentYChanged: {
                                 var other = panel.pointLists[tableCard.tableKey === "baseline"
@@ -308,13 +312,14 @@ Item {
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 150
-            Layout.minimumHeight: 0
+            Layout.minimumHeight: 88
+            Layout.preferredHeight: Math.min(180, Math.max(88, (panel.resultItems ? panel.resultItems.length : 0) * 48))
+            implicitHeight: Layout.preferredHeight
             visible: panel.resultItems.length > 0
             clip: true
             spacing: 5
             model: panel.resultItems
-            ScrollBar.vertical: ScrollBar { }
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             delegate: Rectangle {
                 width: ListView.view.width
                 height: 44

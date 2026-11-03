@@ -3717,14 +3717,17 @@ ApplicationWindow {
 
                     // ==================== 左：单型号多对象 ====================
                     Rectangle {
+                        id: singleObjectCard
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
                         Layout.fillHeight: true
                         Layout.minimumHeight: 380
+                        implicitHeight: singleObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
                         radius: 9
                         color: "white"
                         border.color: window.line
                         ColumnLayout {
+                            id: singleObjectCol
                             anchors.fill: parent
                             anchors.margins: window.height < 750 ? 10 : 14
                             spacing: window.height < 750 ? 7 : 10
@@ -3861,14 +3864,17 @@ ApplicationWindow {
                         }
 
                         Rectangle {
+                            id: singleResultRect
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: window.height < 750 ? 200 : 240
+                            implicitHeight: singleResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
                             clip: true
                             ObjectResultPanel {
+                                id: singleResultPanel
                                 anchors.fill: parent
                                 anchors.margins: window.height < 750 ? 8 : 12
                                 trajectorySeries: appController.multiObjectResultIsFleet
@@ -3893,14 +3899,17 @@ ApplicationWindow {
 
                 // ==================== 右：跨型号交错 ====================
                 Rectangle {
+                    id: fleetObjectCard
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
                     Layout.minimumHeight: 380
+                    implicitHeight: fleetObjectCol.implicitHeight + (window.height < 750 ? 20 : 28)
                     radius: 9
                     color: "white"
                     border.color: window.line
                     ColumnLayout {
+                        id: fleetObjectCol
                         anchors.fill: parent
                         anchors.margins: window.height < 750 ? 10 : 14
                         spacing: window.height < 750 ? 6 : 10
@@ -4033,14 +4042,17 @@ ApplicationWindow {
                         }
 
                         Rectangle {
+                            id: fleetResultRect
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumHeight: window.height < 750 ? 200 : 240
+                            implicitHeight: fleetResultPanel.implicitHeight + (window.height < 750 ? 16 : 24)
                             radius: 7
                             color: "#f8fafc"
                             border.color: window.line
                             clip: true
                             ObjectResultPanel {
+                                id: fleetResultPanel
                                 anchors.fill: parent
                                 anchors.margins: window.height < 750 ? 8 : 12
                                 trajectorySeries: appController.multiObjectResultIsFleet
