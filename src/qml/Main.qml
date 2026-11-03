@@ -3658,6 +3658,9 @@ ApplicationWindow {
 
     Popup {
         id: multiObjectPopup
+        // 记录关闭后是否需要恢复专项测试页。"型号与代码"按钮会将此标记置 false，
+        // 而关闭弹窗右上角 × 或 Escape 时则保持默认的 true 以便返回。
+        property bool __returnToSpecialty: true
         width: Math.min(window.width - (window.width < 1350 ? 30 : 80), 1260)
         height: Math.min(window.height - (window.height < 750 ? 20 : 50), 860)
         x: (window.width - width) / 2
@@ -3748,6 +3751,7 @@ ApplicationWindow {
                                 implicitWidth: 100
                                 implicitHeight: 32
                                 onClicked: {
+                                    multiObjectPopup.__returnToSpecialty = false
                                     multiObjectPopup.close()
                                     configurationPopup.open()
                                 }
@@ -4097,12 +4101,18 @@ ApplicationWindow {
             configurationPopup.close()
             resultsPopup.close()
             reportCenterPopup.close()
+            specialtyPopup.close()
             if (appController.selectedModelIndex < 0 && appController.modelCount > 0)
                 appController.selectModel(0)
             appController.initializeFleetMultiObjectSelection()
             if (singleModelBox.count > 0)
                 singleModelBox.currentIndex = Math.max(0, appController.selectedModelIndex)
             loadValues()
+        }
+        onClosed: {
+            if (__returnToSpecialty)
+                specialtyPopup.open()
+            __returnToSpecialty = true
         }
     }
 
