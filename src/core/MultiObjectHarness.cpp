@@ -59,6 +59,7 @@ void CopyDependencyDllsBesideHarness(const std::vector<std::string>& searchDirs,
                      + qToUtf8(info.fileName()) + "\n";
                 continue;
             }
+            if (info.fileName().contains(QStringLiteral("__run"), Qt::CaseInsensitive)) continue;
             if (copied.contains(info.fileName())) continue;
             const QString dest = QDir(destDir).filePath(info.fileName());
             if (!harnessDllPath.isEmpty()
@@ -408,6 +409,9 @@ std::string MultiObjectHarness::LoadModelObjectKitHeader() {
     QStringList candidates;
     candidates << QStringLiteral(":/core/ModelObjectKit.h")
                << QDir(QCoreApplication::applicationDirPath())
+                      .filePath(QStringLiteral("ModelObjectKit.h"))
+               << QStringLiteral("src/core/ModelObjectKit.h")
+               << QDir(QCoreApplication::applicationDirPath() + "/../../src/core")
                       .filePath(QStringLiteral("ModelObjectKit.h"));
     for (const QString& path : candidates) {
         QFile file(path);

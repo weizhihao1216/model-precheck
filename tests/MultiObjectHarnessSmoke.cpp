@@ -1,5 +1,6 @@
 #include "../src/core/MultiObjectHarness.h"
 #include "../src/core/SingleThreadMultiObjectTester.h"
+#include "../src/core/ConcurrencyTester.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
@@ -133,6 +134,30 @@ int runUserPoolHarness(const std::string& headerPath, const std::string& workDir
     return report.verdict == "PASS" && report.completedObjects == 4 ? 0 : 12;
 }
 
+int runConcurrencyHarness(const std::string& headerPath, const std::string& workDir) {
+    UserHarnessConfig config = makeDemoConfig(headerPath, workDir, "ConcurrencySmokeHarness");
+    config.stepCount = 100;
+    config.stepDt = 0.02;
+
+    UserCodeHarness harness;
+    const CompileResult compile = harness.Compile(config);
+    std::cout << compile.log;
+    if (!compile.success) return 31;
+
+    ConcurrencyTestConfig testConfig;
+    testConfig.mode = ConcurrencyTestMode::MultiThread;
+    testConfig.count = 4;
+    testConfig.randomSeed = 42;
+    const ConcurrencyTestReport report = ConcurrencyTester::Run(harness, testConfig);
+    std::cout << "concurrency: verdict=" << report.verdict
+              << " success=" << report.successCount
+              << " fail=" << report.userFailCount
+              << " race=" << report.dataRaceCount
+              << " exc=" << report.exceptionCount
+              << " summary=" << report.summary << "\n";
+    return report.verdict == "PASS" ? 0 : 32;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -144,6 +169,7 @@ int main(int argc, char* argv[]) {
     const std::string mode = argv[1];
     if (mode == "userpool") return runUserPoolHarness(argv[2], argv[3]);
     if (mode == "single") return runSingleObjectHarness(argv[2], argv[3]);
+    if (mode == "concurrency") return runConcurrencyHarness(argv[2], argv[3]);
     std::cerr << "unknown mode: " << mode << "\n";
     return 2;
 }

@@ -34,6 +34,9 @@ std::string LoadModelObjectKitHeader() {
     QStringList candidates;
     candidates << QStringLiteral(":/core/ModelObjectKit.h")
                << QDir(QCoreApplication::applicationDirPath())
+                      .filePath(QStringLiteral("ModelObjectKit.h"))
+               << QStringLiteral("src/core/ModelObjectKit.h")
+               << QDir(QCoreApplication::applicationDirPath() + "/../../src/core")
                       .filePath(QStringLiteral("ModelObjectKit.h"));
     for (const QString& path : candidates) {
         QFile file(path);
@@ -337,7 +340,8 @@ std::string UserCodeHarness::GenerateUnifiedSource(const UserHarnessConfig& conf
     ss << "extern \"C\" __declspec(dllexport) int RunUserTest(\n";
     ss << "    const double* dvals, int nd,\n";
     ss << "    const int* ivals, int ni,\n";
-    ss << "    int stepCount, double dt)\n";
+    ss << "    int stepCount, double dt,\n";
+    ss << "    double* outFinalLat, double* outFinalLon, double* outChecksum)\n";
     ss << "{\n";
     ss << "    if (stepCount < 1) stepCount = 1;\n";
     ss << "    if (dt <= 0.0) dt = 0.02;\n";
@@ -361,15 +365,22 @@ std::string UserCodeHarness::GenerateUnifiedSource(const UserHarnessConfig& conf
     ss << "        SafeMoDestroy(object, 0, &destroyCode);\n";
     ss << "        return rc != 0 ? rc : -32000;\n";
     ss << "    }\n";
+    ss << "    double lastLat = 0.0, lastLon = 0.0, checksum = 0.0;\n";
     ss << "    for (int step = 0; step < stepCount; ++step) {\n";
     ss << "        double lat = 0.0;\n";
     ss << "        double lon = 0.0;\n";
     ss << "        rc = SafeMoStep(object, 0, step, dt, &R, &lat, &lon, &exceptionCode);\n";
     ss << "        if (rc != 0 || exceptionCode != 0) break;\n";
     ss << "        RecordTrajectoryPoint(lat, lon);\n";
+    ss << "        lastLat = lat;\n";
+    ss << "        lastLon = lon;\n";
+    ss << "        checksum += (lat * 1000.0 + lon) * static_cast<double>(step + 1);\n";
     ss << "    }\n";
     ss << "    unsigned long destroyCode = 0;\n";
     ss << "    SafeMoDestroy(object, 0, &destroyCode);\n";
+    ss << "    if (outFinalLat) *outFinalLat = lastLat;\n";
+    ss << "    if (outFinalLon) *outFinalLon = lastLon;\n";
+    ss << "    if (outChecksum) *outChecksum = checksum;\n";
     ss << "    if (exceptionCode != 0) return -32000;\n";
     ss << "    return rc;\n";
     ss << "}\n\n";
@@ -655,6 +666,7 @@ static void CopyDependencyDllsBesideHarness(const std::vector<std::string>& sear
                 }
                 const char* ext = strrchr(data.cFileName, '.');
                 if (!ext || _stricmp(ext, ".dll") != 0) continue;
+                if (strstr(data.cFileName, "__run") != nullptr) continue;
                 if (!harnessName.empty() && _stricmp(data.cFileName, harnessName.c_str()) == 0) {
                     log += "INFO: 跳过与 Harness 同名的模型 DLL（避免覆盖）: ";
                     log += data.cFileName;
@@ -1029,17 +1041,20 @@ RandomValueBlob UserCodeHarness::Sample(uint32_t seed) const {
     return blob;
 }
 
-typedef int (*FnRunUserTestRaw)(const double*, int, const int*, int, int, double);
+typedef int (*FnRunUserTestRaw)(const double*, int, const int*, int, int, double,
+                                double*, double*, double*);
 
 static int InvokeRunUserTestRaw(FnRunUserTestRaw fn, const double* d, int nd, const int* iv, int ni,
-                                int stepCount, double dt, DWORD* outExc) {
+                                int stepCount, double dt,
+                                double* outLat, double* outLon, double* outChecksum,
+                                DWORD* outExc) {
     if (!fn) {
         if (outExc) *outExc = static_cast<DWORD>(-1);
         return 0;
     }
     __try {
         if (outExc) *outExc = 0;
-        return fn(d, nd, iv, ni, stepCount, dt);
+        return fn(d, nd, iv, ni, stepCount, dt, outLat, outLon, outChecksum);
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         DWORD c = GetExceptionCode();
@@ -1054,7 +1069,13 @@ void UserCodeHarness::SetStepParams(int stepCount, double stepDt) {
     m_stepDt = stepDt > 0.0 ? stepDt : 0.02;
 }
 
-bool UserCodeHarness::RunOnce(const RandomValueBlob& values, int* outUserReturn, bool* outSeh, std::string& err) const {
+bool UserCodeHarness::RunOnce(const RandomValueBlob& values,
+                             int* outUserReturn,
+                             bool* outSeh,
+                             std::string& err,
+                             double* outFinalLat,
+                             double* outFinalLon,
+                             double* outChecksum) const {
     if (!m_pfnRun) {
         err = "Harness DLL 未加载";
         return false;
@@ -1067,6 +1088,7 @@ bool UserCodeHarness::RunOnce(const RandomValueBlob& values, int* outUserReturn,
         values.ints.empty() ? nullptr : values.ints.data(),
         static_cast<int>(values.ints.size()),
         m_stepCount, m_stepDt,
+        outFinalLat, outFinalLon, outChecksum,
         &exc);
 
     if (exc != 0) {

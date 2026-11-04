@@ -33,6 +33,8 @@ struct ConcurrencyThreadResult {
     int userReturnCode = 0;
     bool exceptionOccurred = false;
     bool userReportedFail = false;
+    bool dataRaceDetected = false;
+    double deviation = 0.0;
     std::string randomSummary;
     std::string errorLog;
 };
@@ -44,6 +46,7 @@ struct ConcurrencyTestReport {
     bool crashed = false;
     int exceptionCount = 0;
     int userFailCount = 0;
+    int dataRaceCount = 0;
     int successCount = 0;
     bool multiThreadSafe = false;
     bool multiModelOk = false;

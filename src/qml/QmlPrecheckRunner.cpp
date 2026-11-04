@@ -274,6 +274,7 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
         threads.workerCount += current.workerCount;
         threads.successCount += current.successCount;
         threads.userFailCount += current.userFailCount;
+        threads.dataRaceCount += current.dataRaceCount;
         threads.exceptionCount += current.exceptionCount;
         threads.crashed = threads.crashed || current.crashed;
         threads.multiThreadSafe = threads.multiThreadSafe && current.multiThreadSafe;
@@ -290,10 +291,11 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
     fleet.multiThreadReport = std::move(threads);
 
     // 多线程与多型号并行阶段结论
-    if (progress) progress(QString::fromUtf8("多线程测试结果 — %1（成功 %2 · 用户失败 %3 · 异常 %4）")
+    if (progress) progress(QString::fromUtf8("多线程测试结果 — %1（成功 %2 · 用户失败 %3 · 竞态 %4 · 异常 %5）")
         .arg(qstr(fleet.multiThreadReport.verdict))
         .arg(fleet.multiThreadReport.successCount)
         .arg(fleet.multiThreadReport.userFailCount)
+        .arg(fleet.multiThreadReport.dataRaceCount)
         .arg(fleet.multiThreadReport.exceptionCount));
     if (progress) progress(QString::fromUtf8("多型号并行结果 — %1")
         .arg(qstr(fleet.multiModelReport.verdict)));
@@ -372,6 +374,7 @@ QVariantMap concurrencyMap(const QString& title, const QString& description,
     row.insert(QStringLiteral("successCount"), report.successCount);
     row.insert(QStringLiteral("exceptionCount"), report.exceptionCount);
     row.insert(QStringLiteral("userFailCount"), report.userFailCount);
+    row.insert(QStringLiteral("dataRaceCount"), report.dataRaceCount);
     QVariantList workers;
     for (const ConcurrencyThreadResult& item : report.threadResults) {
         QVariantMap worker;
@@ -381,6 +384,8 @@ QVariantMap concurrencyMap(const QString& title, const QString& description,
         worker.insert(QStringLiteral("returnCode"), item.userReturnCode);
         worker.insert(QStringLiteral("exception"), item.exceptionOccurred);
         worker.insert(QStringLiteral("userFail"), item.userReportedFail);
+        worker.insert(QStringLiteral("dataRace"), item.dataRaceDetected);
+        worker.insert(QStringLiteral("deviation"), item.deviation);
         worker.insert(QStringLiteral("randomSummary"), qstr(item.randomSummary));
         worker.insert(QStringLiteral("error"), qstr(item.errorLog));
         workers.append(worker);

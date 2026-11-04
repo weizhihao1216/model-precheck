@@ -169,6 +169,7 @@ add_executable(MultiObjectHarnessSmoke EXCLUDE_FROM_ALL
     src/core/PeAnalyzer.cpp
     src/core/SingleThreadMultiObjectTester.cpp
     src/core/UserCodeHarness.cpp
+    src/core/ConcurrencyTester.cpp
     src/utils/MemoryUtils.cpp
     src/utils/SehHelper.cpp
 )
@@ -183,6 +184,7 @@ add_executable(StaticPrecheckSmoke EXCLUDE_FROM_ALL
     src/core/LibAnalyzer.cpp
     src/core/PeAnalyzer.cpp
     src/core/DllLoader.cpp
+    src/core/FunctionalVerifier.cpp
     src/utils/MemoryUtils.cpp
     src/utils/SehHelper.cpp
 )
@@ -196,6 +198,7 @@ add_executable(SampleModelsMatrix EXCLUDE_FROM_ALL
     src/core/LibAnalyzer.cpp
     src/core/PeAnalyzer.cpp
     src/core/DllLoader.cpp
+    src/core/FunctionalVerifier.cpp
     src/core/PrecheckSummary.cpp
     src/utils/MemoryUtils.cpp
     src/utils/SehHelper.cpp

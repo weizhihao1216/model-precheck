@@ -5,6 +5,7 @@
 #include "../src/core/HeaderAnalyzer.h"
 #include "../src/core/LibAnalyzer.h"
 #include "../src/core/PeAnalyzer.h"
+#include "../src/core/FunctionalVerifier.h"
 #include "../src/utils/QtEncoding.h"
 
 #include <QCoreApplication>
@@ -81,6 +82,47 @@ int main(int argc, char** argv) {
     out << "CROSS headers=" << allHeaders.size() << QT_ENDL;
     out.flush();
     (void)HeaderAnalyzer::AnalyzeHeaderSet(allHeaders);
+    // Test FunctionalVerifier angle unit heuristic
+    {
+        // 1. Small angle level flight (pitch 2 deg, yaw 1.5 deg): should be DEGREES with no warnings
+        std::vector<WeaponModelOutput> levelFlight(10);
+        for (int i = 0; i < 10; ++i) {
+            levelFlight[i].sim_time = i * 0.1;
+            levelFlight[i].lat = 30.0 + i * 0.001;
+            levelFlight[i].lon = 110.0 + i * 0.001;
+            levelFlight[i].alt = 1000.0;
+            levelFlight[i].vx = 300.0;
+            levelFlight[i].pitch = 2.0;  // 2 degrees
+            levelFlight[i].yaw = 1.5;    // 1.5 degrees
+            levelFlight[i].roll = 0.0;
+        }
+        auto repLevel = FunctionalVerifier::VerifyTrajectory(levelFlight);
+        if (!repLevel.isDegreeUnit || !repLevel.warnings.empty()) {
+            out << "FAIL: Level flight false positive warning on degrees: isDegree="
+                << repLevel.isDegreeUnit << " warns=" << repLevel.warnings.size() << QT_ENDL;
+            return 3;
+        }
+
+        // 2. Trajectory with yaw wrap around ±pi: should flag suspicious radians
+        std::vector<WeaponModelOutput> radWrap(10);
+        for (int i = 0; i < 10; ++i) {
+            radWrap[i].sim_time = i * 0.1;
+            radWrap[i].lat = 30.0;
+            radWrap[i].lon = 110.0;
+            radWrap[i].alt = 1000.0;
+            radWrap[i].vx = 300.0;
+            radWrap[i].pitch = 0.05;
+            radWrap[i].yaw = (i < 5) ? 3.10 : -3.10;
+        }
+        auto repWrap = FunctionalVerifier::VerifyTrajectory(radWrap);
+        if (repWrap.isDegreeUnit || repWrap.warnings.empty()) {
+            out << "FAIL: Radian wrap not detected!" << QT_ENDL;
+            return 4;
+        }
+
+        out << "VERIFY_TRAJECTORY: PASS (level-flight degree & radian wrap tests passed)" << QT_ENDL;
+    }
+
     out << "ALL DONE" << QT_ENDL;
     return 0;
 }

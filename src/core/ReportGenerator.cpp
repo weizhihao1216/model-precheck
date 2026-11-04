@@ -327,7 +327,8 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
         html << "  <h2>" << title << "</h2>\n"
              << "  <div class=\"card\">\n"
              << "    <p><b>数量:</b> " << cr.workerCount << "</p>\n"
-             << "    <p><b>成功 / 用户失败 / 异常:</b> " << cr.successCount
+             << "    <p><b>成功 / 竞态 / 用户失败 / 异常:</b> " << cr.successCount
+             << " / " << cr.dataRaceCount
              << " / " << cr.userFailCount
              << " / " << cr.exceptionCount << "</p>\n"
              << "    <p><b>判定:</b> <span class=\""
@@ -896,7 +897,8 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
             return;
         }
         html << "    <p><b>数量:</b> " << cr.workerCount << "</p>\n"
-             << "    <p><b>成功 / 用户失败 / 异常:</b> " << cr.successCount
+             << "    <p><b>成功 / 竞态 / 用户失败 / 异常:</b> " << cr.successCount
+             << " / " << cr.dataRaceCount
              << " / " << cr.userFailCount
              << " / " << cr.exceptionCount << "</p>\n"
              << "    <p><b>判定:</b> <span class=\""

@@ -85,7 +85,13 @@ public:
 
     // Execute user main once. Returns false on SEH / loader failure.
     // outUserReturn: return value from UserMain; outSeh: true if hardware exception
-    bool RunOnce(const RandomValueBlob& values, int* outUserReturn, bool* outSeh, std::string& err) const;
+    bool RunOnce(const RandomValueBlob& values,
+                 int* outUserReturn,
+                 bool* outSeh,
+                 std::string& err,
+                 double* outFinalLat = nullptr,
+                 double* outFinalLon = nullptr,
+                 double* outChecksum = nullptr) const;
 
     // Trajectory capture (single-thread). Enable before RunOnce; UserMain should call RecordTrajectoryPoint.
     bool SetTrajectoryCapture(bool enabled) const;
@@ -114,7 +120,7 @@ private:
 
     // Export: int RunUserTest(const double* dvals, int nd, const int* ivals, int ni,
     //                         int stepCount, double dt);
-    typedef int (*FnRunUserTest)(const double*, int, const int*, int, int, double);
+    typedef int (*FnRunUserTest)(const double*, int, const int*, int, int, double, double*, double*, double*);
     typedef void (*FnSetTrajectoryCapture)(int);
     typedef int (*FnGetTrajectoryCount)();
     typedef int (*FnGetTrajectoryPoint)(int, double*, double*);
