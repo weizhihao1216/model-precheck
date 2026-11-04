@@ -1,6 +1,7 @@
-﻿// Smoke: run PackageScanner + Header/Lib/PE analyzers on all dist/sample_models
+// Smoke: run PackageScanner + Header/Lib/PE analyzers on all dist/sample_models
 // without Qt UI. Build: cmake --build build --config Release --target StaticPrecheckSmoke
 #include "../src/core/PackageScanner.h"
+#include "../src/utils/SehHelper.h"
 #include "../src/core/HeaderAnalyzer.h"
 #include "../src/core/LibAnalyzer.h"
 #include "../src/core/PeAnalyzer.h"
@@ -62,6 +63,7 @@ int main(int argc, char** argv) {
         out << "FAIL: root missing" << QT_ENDL;
         return 2;
     }
+    CleanupPrivateModuleCopies(dir.absolutePath().toUtf8().toStdString());
 
     const QFileInfoList pkgs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QFileInfo& fi : pkgs) {

@@ -60,7 +60,7 @@ if not defined QT_DIR (
     echo [ERROR] Qt installation not found.
     echo Please set environment variable QTDIR or ThirdPart.
     echo Example: set QTDIR=D:\HR\DEV\ThirdParty\Qt5.14\vc143\x64
-    pause
+
     exit /b 1
 )
 
@@ -80,7 +80,7 @@ if defined CMAKE_GENERATOR (
 )
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configuration failed!
-    pause
+
     exit /b %ERRORLEVEL%
 )
 
@@ -89,7 +89,7 @@ echo [2/4] Building and Installing Release Target...
 cmake --build "%BUILD_DIR%" --config Release --target install
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build or install failed!
-    pause
+
     exit /b %ERRORLEVEL%
 )
 
@@ -98,7 +98,7 @@ echo [3/4] Deploying Qt Runtime Dependencies...
 "%QT_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%DIST_DIR%\model-precheck.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Qt runtime deployment failed!
-    pause
+
     exit /b %ERRORLEVEL%
 )
 
@@ -130,5 +130,3 @@ echo   Output Executable: %DIST_DIR%\model-precheck.exe
 echo   Env README:        %DIST_DIR%\README.md
 echo ============================================================
 echo.
-
-pause

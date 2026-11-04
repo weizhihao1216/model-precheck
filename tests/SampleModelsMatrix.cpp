@@ -228,6 +228,7 @@ int main(int argc, char** argv) {
         out << "FAIL: missing root" << QT_ENDL;
         return 2;
     }
+    CleanupPrivateModuleCopies(dir.absolutePath().toUtf8().toStdString());
 
     // Cross-header pair checks
     auto pairConflict = [&](const QString& a, const QString& b) {

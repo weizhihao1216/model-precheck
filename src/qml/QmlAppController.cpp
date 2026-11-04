@@ -28,6 +28,7 @@
 #include "core/HeaderAnalyzer.h"
 #include "core/LibAnalyzer.h"
 #include "core/PackageScanner.h"
+#include "utils/SehHelper.h"
 #include "core/PeAnalyzer.h"
 #include "core/PerfProfiler.h"
 #include "core/SessionStore.h"
@@ -1218,6 +1219,7 @@ void QmlAppController::browseSelectedPackage() {
     if (selected.isEmpty()) return;
 
     const QString packageDir = QDir::toNativeSeparators(selected);
+    CleanupPrivateModuleCopies(packageDir.toUtf8().toStdString());
     const ModelPackageFiles scanned =
         PackageScanner::ScanPackageDirectory(packageDir.toUtf8().toStdString());
     model->packageDir = packageDir;
@@ -1310,8 +1312,14 @@ CompileResult QmlAppController::compileSnapshotModel(SessionModelSnapshot& model
     if (scanned.includeDirExists) config.includeDirs.push_back(scanned.includeDir);
     if (scanned.modelsDirExists) config.libPaths.push_back(scanned.modelsDir);
     if (scanned.libDirExists) config.libPaths.push_back(scanned.libDir);
-    for (int i = 0; i < static_cast<int>(scanned.allLibFiles.size()) && i < 20; ++i)
-        config.linkLibs.push_back(scanned.allLibFiles[static_cast<size_t>(i)]);
+    // 浼樺厛閾炬帴 Release 搴撴枃浠讹紱鑻ユ湭鍖哄垎鍒欓摼鎺ュ叏閮紱瑙ｉ櫎 <=20 纭紪鐮佷笂闄愬苟鍘婚噸
+    const auto& libsToLink = !scanned.releaseLibFiles.empty()
+        ? scanned.releaseLibFiles : scanned.allLibFiles;
+    for (const auto& lib : libsToLink) {
+        if (std::find(config.linkLibs.begin(), config.linkLibs.end(), lib) == config.linkLibs.end()) {
+            config.linkLibs.push_back(lib);
+        }
+    }
 
     const QString folder = SafeFolderName(model.name, modelIndex);
     const QString outputDir = QDir(QCoreApplication::applicationDirPath())
@@ -2081,6 +2089,12 @@ void QmlAppController::runPrecheck() {
     m_logLines.clear();
     emit logsChanged();
     emit precheckStateChanged();
+
+    for (const auto& m : m_snapshot.models) {
+        if (!m.packageDir.trimmed().isEmpty()) {
+            CleanupPrivateModuleCopies(m.packageDir.toUtf8().toStdString());
+        }
+    }
 
     // 一键预检不再要求先手动编译：缺少 DLL 的型号在此自动编译一次，
     // 同一份对象代码同时覆盖预检、压测、并发与多对象测试。

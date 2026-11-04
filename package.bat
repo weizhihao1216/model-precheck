@@ -19,10 +19,7 @@ if %ERRORLEVEL% neq 0 (
 where cmake.exe >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake not found. Please install CMake or add it to PATH.
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -99,10 +96,7 @@ set "PATH=%QT511_DIR%\bin;%PATH%"
 cmake -B "%BUILD_DIR_511%" -A x64 -DCMAKE_INSTALL_PREFIX="%PKG_DIR_511%" -DCMAKE_PREFIX_PATH="%QT511_DIR%"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configure failed for Qt 5.11
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -110,10 +104,7 @@ echo [2/5] Building Release target...
 cmake --build "%BUILD_DIR_511%" --config Release --target install
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build failed for Qt 5.11
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -121,10 +112,7 @@ echo [3/5] Deploying Qt 5.11 runtime dependencies...
 "%QT511_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%PKG_DIR_511%\model-precheck.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] windeployqt failed for Qt 5.11
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -139,7 +127,7 @@ copy /Y "%PREREQ_SRC%\download_prerequisites.ps1" "%PREREQ_DST%\download_prerequ
 if exist "%PREREQ_SRC%\vc_redist.x64.exe" copy /Y "%PREREQ_SRC%\vc_redist.x64.exe" "%PREREQ_DST%\vc_redist.x64.exe" >nul
 if exist "%PREREQ_SRC%\vs_BuildTools.exe" copy /Y "%PREREQ_SRC%\vs_BuildTools.exe" "%PREREQ_DST%\vs_BuildTools.exe" >nul
 
-xcopy /E /I /Y "%PROJECT_DIR%sample_models" "%PKG_DIR_511%\sample_models" >nul
+xcopy /E /I /Y /Q "%PROJECT_DIR%sample_models" "%PKG_DIR_511%\sample_models" >nul
 
 echo [5/6] Verifying Qt 5.11 runtime startup smoke test...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$psi = New-Object System.Diagnostics.ProcessStartInfo; $psi.FileName = '%PKG_DIR_511%\model-precheck.exe'; $psi.WorkingDirectory = '%PKG_DIR_511%'; $psi.UseShellExecute = $false; $p = [System.Diagnostics.Process]::Start($psi); $exited = $p.WaitForExit(2000); if ($exited) { Write-Host '[ERROR] Qt 5.11 model-precheck.exe crashed or exited prematurely with code:' $p.ExitCode; exit 1 } else { $p.Kill(); Write-Host '[OK] Qt 5.11 runtime verification passed.'; exit 0 }"
@@ -179,10 +167,7 @@ set "PATH=%QT514_DIR%\bin;%PATH%"
 cmake -B "%BUILD_DIR_514%" -A x64 -DCMAKE_INSTALL_PREFIX="%PKG_DIR_514%" -DCMAKE_PREFIX_PATH="%QT514_DIR%"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configure failed for Qt 5.14
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -190,10 +175,7 @@ echo [2/5] Building Release target...
 cmake --build "%BUILD_DIR_514%" --config Release --target install
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Build failed for Qt 5.14
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -201,10 +183,7 @@ echo [3/5] Deploying Qt 5.14 runtime dependencies...
 "%QT514_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%PKG_DIR_514%\model-precheck.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] windeployqt failed for Qt 5.14
-    if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+    
     exit /b 1
 )
 
@@ -219,7 +198,7 @@ copy /Y "%PREREQ_SRC%\download_prerequisites.ps1" "%PREREQ_DST%\download_prerequ
 if exist "%PREREQ_SRC%\vc_redist.x64.exe" copy /Y "%PREREQ_SRC%\vc_redist.x64.exe" "%PREREQ_DST%\vc_redist.x64.exe" >nul
 if exist "%PREREQ_SRC%\vs_BuildTools.exe" copy /Y "%PREREQ_SRC%\vs_BuildTools.exe" "%PREREQ_DST%\vs_BuildTools.exe" >nul
 
-xcopy /E /I /Y "%PROJECT_DIR%sample_models" "%PKG_DIR_514%\sample_models" >nul
+xcopy /E /I /Y /Q "%PROJECT_DIR%sample_models" "%PKG_DIR_514%\sample_models" >nul
 
 echo [5/6] Verifying Qt 5.14 runtime startup smoke test...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$psi = New-Object System.Diagnostics.ProcessStartInfo; $psi.FileName = '%PKG_DIR_514%\model-precheck.exe'; $psi.WorkingDirectory = '%PKG_DIR_514%'; $psi.UseShellExecute = $false; $p = [System.Diagnostics.Process]::Start($psi); $exited = $p.WaitForExit(2000); if ($exited) { Write-Host '[ERROR] Qt 5.14 model-precheck.exe crashed or exited prematurely with code:' $p.ExitCode; exit 1 } else { $p.Kill(); Write-Host '[OK] Qt 5.14 runtime verification passed.'; exit 0 }"
@@ -247,7 +226,4 @@ if exist "%DIST_ROOT%\model-precheck_Qt5.14_x64.zip" echo   - %DIST_ROOT%\model-
 echo ============================================================
 echo.
 
-if "%CI%"=="" (
-    rem pause when run interactively
-    timeout /t 3 >nul 2>&1 || pause
-)
+

@@ -95,9 +95,10 @@ int main(int argc, char* argv[]) {
     qRegisterMetaType<ConcurrencyThreadResult>("ConcurrencyThreadResult");
 
     // 娓呯悊涓婃杩愯閬楃暀鐨勮娴嬫ā鍧楀壇鏈紙鏈杩愯灏氭湭鍔犺浇浠讳綍妯″潡锛屽垹闄や竴瀹氬畨鍏級銆?
-    CleanupPrivateModuleCopies(
-        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("TestModel"))
-            .toUtf8().toStdString());
+    const QString appDirPath = QCoreApplication::applicationDirPath();
+    CleanupPrivateModuleCopies(QDir(appDirPath).filePath(QStringLiteral("TestModel")).toUtf8().toStdString());
+    CleanupPrivateModuleCopies(QDir(appDirPath).filePath(QStringLiteral("sample_models")).toUtf8().toStdString());
+    CleanupPrivateModuleCopies(QDir::current().filePath(QStringLiteral("sample_models")).toUtf8().toStdString());
 
     int exitCode = 0;
     {

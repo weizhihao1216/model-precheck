@@ -18,7 +18,9 @@ void collectFilesRecursive(const QString& rootDir,
                     QDir::Files | QDir::NoSymLinks,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        out.push_back(QFileInfo(it.next()).absoluteFilePath());
+        const QString full = QFileInfo(it.next()).absoluteFilePath();
+        if (full.contains(QStringLiteral("__run"))) continue;
+        out.push_back(full);
     }
 }
 

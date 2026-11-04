@@ -1,6 +1,7 @@
 #include "SehHelper.h"
 #include <atomic>
 #include <sstream>
+#include <malloc.h>
 
 std::string SehCodeToString(DWORD code) {
     switch (code) {
@@ -46,6 +47,12 @@ static DWORD FilterSehException(DWORD code) {
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+static inline void CheckAndResetStackOverflow(DWORD code) {
+    if (code == EXCEPTION_STACK_OVERFLOW) {
+        _resetstkoflw();
+    }
+}
+
 bool SafeCallVoidNoArg(FnVoidNoArg fn, DWORD* outExceptionCode) {
     if (!fn) return false;
     __try {
@@ -54,7 +61,9 @@ bool SafeCallVoidNoArg(FnVoidNoArg fn, DWORD* outExceptionCode) {
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -68,7 +77,9 @@ bool SafeCallIntNoArg(FnIntNoArg fn, int* outResult, DWORD* outExceptionCode) {
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -82,7 +93,9 @@ bool SafeCallInit(FnModelInit fn, const WeaponModelParams* params, int* outResul
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -96,7 +109,9 @@ bool SafeCallStep(FnModelStep fn, WeaponModelOutput* output, int* outResult, DWO
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -109,7 +124,9 @@ bool SafeCallDestroy(FnModelDestroy fn, DWORD* outExceptionCode) {
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -122,7 +139,9 @@ bool SafeCallGetInfo(FnModelGetInfo fn, std::string& outInfo, DWORD* outExceptio
         if (outExceptionCode) *outExceptionCode = 0;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 
@@ -142,7 +161,9 @@ bool SafeCallCreate(FnModelCreate fn, ModelHandle* outHandle, DWORD* outExceptio
         return (*outHandle != nullptr);
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         *outHandle = nullptr;
         return false;
     }
@@ -157,7 +178,9 @@ bool SafeCallInitEx(FnModelInitEx fn, ModelHandle handle, const WeaponModelParam
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -171,7 +194,9 @@ bool SafeCallStepEx(FnModelStepEx fn, ModelHandle handle, WeaponModelOutput* out
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -184,7 +209,9 @@ bool SafeCallDestroyEx(FnModelDestroyEx fn, ModelHandle handle, DWORD* outExcept
         return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
-        if (outExceptionCode) *outExceptionCode = GetExceptionCode();
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
 }
@@ -212,7 +239,12 @@ std::string FileStemOfPath(const std::string& path) {
     const size_t slash = path.find_last_of("\\/");
     const std::string name = (slash == std::string::npos) ? path : path.substr(slash + 1);
     const size_t dot = name.find_last_of('.');
-    return dot == std::string::npos ? name : name.substr(0, dot);
+    std::string stem = (dot == std::string::npos) ? name : name.substr(0, dot);
+    const size_t runPos = stem.find("__run");
+    if (runPos != std::string::npos) {
+        stem = stem.substr(0, runPos);
+    }
+    return stem;
 }
 
 /** 独立函数里用 SEH 兜住加载异常（带 C++ 对象的函数不能直接写 __try）。 */
@@ -222,9 +254,33 @@ HMODULE LoadLibraryGuarded(const wchar_t* path) {
         module = LoadLibraryExW(path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
         if (!module) module = LoadLibraryW(path);
     } __except (FilterSehException(GetExceptionCode())) {
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
         module = nullptr;
     }
     return module;
+}
+
+static void RecursiveCleanRunDlls(const std::wstring& dir) {
+    if (dir.empty()) return;
+    const std::wstring pattern = dir + L"\\*";
+    WIN32_FIND_DATAW data{};
+    HANDLE hFind = FindFirstFileW(pattern.c_str(), &data);
+    if (hFind == INVALID_HANDLE_VALUE) return;
+    do {
+        const std::wstring name = data.cFileName;
+        if (name == L"." || name == L"..") continue;
+        const std::wstring fullPath = dir + L"\\" + name;
+        if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+            RecursiveCleanRunDlls(fullPath);
+        } else {
+            if (name.size() > 4 && _wcsicmp(name.c_str() + name.size() - 4, L".dll") == 0
+                && name.find(L"__run") != std::wstring::npos) {
+                DeleteFileW(fullPath.c_str());
+            }
+        }
+    } while (FindNextFileW(hFind, &data));
+    FindClose(hFind);
 }
 
 } // namespace
@@ -271,22 +327,6 @@ bool HasLoadedPrivateModule() {
 
 void CleanupPrivateModuleCopies(const std::string& modelsRootDir) {
     if (modelsRootDir.empty()) return;
-    const std::string dirPattern = modelsRootDir + "\\*";
-    WIN32_FIND_DATAA dirData{};
-    HANDLE dirFind = FindFirstFileA(dirPattern.c_str(), &dirData);
-    if (dirFind == INVALID_HANDLE_VALUE) return;
-    do {
-        if ((dirData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) continue;
-        const std::string name = dirData.cFileName;
-        if (name == "." || name == "..") continue;
-        const std::string dir = modelsRootDir + "\\" + name;
-        WIN32_FIND_DATAA fileData{};
-        HANDLE fileFind = FindFirstFileA((dir + "\\*__run*.dll").c_str(), &fileData);
-        if (fileFind == INVALID_HANDLE_VALUE) continue;
-        do {
-            DeleteFileA((dir + "\\" + std::string(fileData.cFileName)).c_str());
-        } while (FindNextFileA(fileFind, &fileData));
-        FindClose(fileFind);
-    } while (FindNextFileA(dirFind, &dirData));
-    FindClose(dirFind);
+    std::wstring wDir = Utf8ToWidePath(modelsRootDir);
+    RecursiveCleanRunDlls(wDir);
 }

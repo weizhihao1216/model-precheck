@@ -18,6 +18,7 @@
 #include <random>
 #include <set>
 #include <sstream>
+#include <malloc.h>
 
 namespace {
 
@@ -103,7 +104,9 @@ int safeRun(RunRaw fn, const double* doubles, int doubleCount,
                   config.tolerance, static_cast<int>(config.schedule),
                   config.randomSeed);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        if (exceptionCode) *exceptionCode = GetExceptionCode();
+        DWORD c = GetExceptionCode();
+        if (c == EXCEPTION_STACK_OVERFLOW) _resetstkoflw();
+        if (exceptionCode) *exceptionCode = c;
         return -1;
     }
 }
@@ -530,7 +533,9 @@ static int SafeInitialize(ModelObjectAdapter* object, int objectId,
         *exceptionCode = 0;
         return object->Initialize(objectId, *random, dt);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        *exceptionCode = GetExceptionCode();
+        DWORD c = GetExceptionCode();
+        if (c == EXCEPTION_STACK_OVERFLOW) _resetstkoflw();
+        *exceptionCode = c;
         return -32000;
     }
 }
@@ -540,7 +545,9 @@ static int SafeStep(ModelObjectAdapter* object, int step, double dt,
         *exceptionCode = 0;
         return object->Step(step, dt, *lat, *lon);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        *exceptionCode = GetExceptionCode();
+        DWORD c = GetExceptionCode();
+        if (c == EXCEPTION_STACK_OVERFLOW) _resetstkoflw();
+        *exceptionCode = c;
         return -32000;
     }
 }
@@ -549,7 +556,9 @@ static void SafeDestroy(ModelObjectAdapter* object, unsigned long* exceptionCode
         *exceptionCode = 0;
         object->Destroy();
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        *exceptionCode = GetExceptionCode();
+        DWORD c = GetExceptionCode();
+        if (c == EXCEPTION_STACK_OVERFLOW) _resetstkoflw();
+        *exceptionCode = c;
     }
 }
 
