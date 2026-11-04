@@ -94,6 +94,10 @@ public:
     static bool SaveReportToFile(const CombinedPrecheckReport& report, const std::string& outputPath);
     static bool SaveDualReportToFile(const DualBuildPrecheckReport& dualReport, const std::string& outputPath);
     static bool SaveFleetReportToFile(const FleetSessionReport& fleetReport, const std::string& outputPath);
+    static bool ExportHtmlToPdf(const std::string& htmlContent, const std::string& pdfPath);
+    static bool SaveReportToPdf(const CombinedPrecheckReport& report, const std::string& outputPath);
+    static bool SaveDualReportToPdf(const DualBuildPrecheckReport& dualReport, const std::string& outputPath);
+    static bool SaveFleetReportToPdf(const FleetSessionReport& fleetReport, const std::string& outputPath);
 };
 
 #endif // REPORT_GENERATOR_H

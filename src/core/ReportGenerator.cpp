@@ -13,6 +13,12 @@
 #include <windows.h>
 #endif
 
+#include <QtPrintSupport/QPrinter>
+#include <QtGui/QTextDocument>
+#include <QtCore/QFileInfo>
+#include <QtCore/QDir>
+#include <QtCore/QString>
+
 namespace {
 
 bool WriteTextFile(const std::string& outputPath, const std::string& content) {
@@ -85,6 +91,11 @@ const char* ReportThemeCss() {
         "  .log-box { background: #f1f5f9; padding: 12px; font-family: Consolas, monospace;"
         "             font-size: 13px; max-height: 280px; overflow-y: auto;"
         "             border: 1px solid #dce4ec; border-radius: 6px; color: #3d4d60; }\n"
+        "  @media print {\n"
+        "    body { background-color: #ffffff; padding: 0; }\n"
+        "    .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }\n"
+        "    tr, .card, .model-section { page-break-inside: avoid; }\n"
+        "  }\n"
         "  code { color: #0d9488; }\n";
 }
 
@@ -323,6 +334,44 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
          << "    <p><b>压测内存增量:</b> " << report.perfReport.memoryDeltaMB << " MB</p>\n"
          << "  </div>\n\n";
 
+    // Section 6: Trajectory & Attitude Angle Verification
+    html << "  <h2>6. 运行轨迹与姿态角单位检查</h2>\n"
+         << "  <div class=\"card\">\n";
+    if (!trajectoryRan) {
+        html << "    <p class=\"warn\">未执行轨迹采集或未采集到有效路径点</p>\n";
+    } else {
+        html << "    <p><b>采样路径点数:</b> " << report.trajReport.totalDataPoints << " 点</p>\n"
+             << "    <p><b>姿态角 / 经纬度单位判定:</b> <span class=\""
+             << (report.trajReport.isDegreeUnit ? "pass\">角度 (deg)" : "warn\">弧度 (rad) - 疑似未按规范转换为度")
+             << "</span></p>\n"
+             << "    <p><b>NaN / Inf 异常点数:</b> "
+             << (report.trajReport.nanOrInfCount == 0 ? "<span class=\"pass\">0</span>"
+                                                      : "<span class=\"fail\">" + std::to_string(report.trajReport.nanOrInfCount) + "</span>")
+             << " | <b>坐标突变/跳变:</b> "
+             << (report.trajReport.positionJumpCount == 0 ? "<span class=\"pass\">0</span>"
+                                                          : "<span class=\"fail\">" + std::to_string(report.trajReport.positionJumpCount) + "</span>")
+             << " | <b>经纬度越界:</b> "
+             << (report.trajReport.outOfBoundsCount == 0 ? "<span class=\"pass\">0</span>"
+                                                         : "<span class=\"fail\">" + std::to_string(report.trajReport.outOfBoundsCount) + "</span>")
+             << "</p>\n"
+             << "    <p><b>单位检查说明:</b> " << (report.trajReport.unitCheckLog.empty() ? "数值范围正常" : report.trajReport.unitCheckLog) << "</p>\n"
+             << "    <p><b>轨迹检查判定:</b> <span class=\""
+             << (report.trajReport.overallPass ? "pass\">PASS" : "fail\">FAIL") << "</span></p>\n";
+    }
+    html << "  </div>\n";
+    if (!report.trajReport.warnings.empty() || !report.trajReport.errors.empty()) {
+        html << "  <table><tr><th>类型</th><th>级别</th><th>详情</th></tr>\n";
+        for (const auto& w : report.trajReport.warnings) {
+            html << "  <tr><td>轨迹告警</td><td class=\"warn\">WARN</td><td>" << w << "</td></tr>\n";
+        }
+        for (const auto& e : report.trajReport.errors) {
+            html << "  <tr><td>轨迹异常</td><td class=\"fail\">FAIL</td><td>" << e << "</td></tr>\n";
+        }
+        html << "  </table>\n\n";
+    } else {
+        html << "\n";
+    }
+
     auto emitConcCard = [&](const char* title, const ConcurrencyTestReport& cr) {
         html << "  <h2>" << title << "</h2>\n"
              << "  <div class=\"card\">\n"
@@ -334,13 +383,47 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
              << "    <p><b>判定:</b> <span class=\""
              << (cr.verdict == "PASS" ? "pass" : (cr.verdict == "WARNING" ? "warn" : "fail"))
              << "\">" << (cr.verdict.empty() ? "N/A" : cr.verdict) << "</span></p>\n"
-             << "    <p>" << cr.summary << "</p>\n"
-             << "  </div>\n\n";
-    };
-    emitConcCard("6. 多型号并行（多路径 DLL × 各型号数量）", report.multiModelReport);
-    emitConcCard("7. 多线程稳定性（并行 UserMain）", report.multiThreadReport);
+             << "    <p>" << cr.summary << "</p>\n";
+        if (!cr.threadResults.empty()) {
+            const bool isMultiModel = (cr.mode == ConcurrencyTestMode::MultiModel);
+            html << "  </div>\n  <table>\n    <tr><th>"
+                 << (isMultiModel ? "型号[实例]" : "线程")
+                 << "</th><th>随机参数</th><th>返回码</th><th>状态</th><th>偏差</th><th>详情</th></tr>\n";
+            for (const auto& tr : cr.threadResults) {
+                html << "    <tr><td>";
+                if (isMultiModel) {
+                    html << tr.modelName << "[" << tr.instanceId << "]";
+                } else {
+                    html << "#" << tr.threadId;
+                }
+                html << "</td><td>" << tr.randomSummary
+                     << "</td><td>" << tr.userReturnCode
+                     << "</td><td>";
+                if (tr.exceptionOccurred) {
+                    html << "<span class=\"fail\">SEH 异常</span>";
+                } else if (tr.dataRaceDetected) {
+                    html << "<span class=\"fail\">竞态串扰</span>";
+                } else if (tr.userReturnCode != 0) {
+                    html << "<span class=\"fail\">返回失败(" << tr.userReturnCode << ")</span>";
+                } else {
+                    html << "<span class=\"pass\">正常</span>";
+                }
+                html << "</td><td>"
+                     << (tr.deviation > 0.0 ? PlainDecimal(tr.deviation, 8) : "—")
+                     << "</td><td>"
+                     << (!tr.errorLog.empty() ? tr.errorLog : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
+                     << "</td></tr>\n";
+            }
+            html << "  </table>\n\n";
+        } else {
+            html << "  </div>\n\n";
+        }
 
-    html << "  <h2>8. 单线程多对象基线/交错测试</h2>\n"
+    };
+    emitConcCard("7. 多型号并行（多路径 DLL × 各型号数量）", report.multiModelReport);
+    emitConcCard("8. 多线程稳定性（并行 UserMain）", report.multiThreadReport);
+
+    html << "  <h2>9. 单线程多对象基线/交错测试</h2>\n"
          << "  <div class=\"card\">\n";
     if (!multiObjectRan) {
         html << "    <p class=\"warn\">"
@@ -366,7 +449,7 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
     html << "  </div>\n\n";
 
     // Section Logs
-    html << "  <h2>9. 预检过程日志追踪</h2>\n"
+    html << "  <h2>10. 预检过程日志追踪</h2>\n"
          << "  <div class=\"log-box\">\n";
     for (const auto& logMsg : report.headerReport.logMessages) {
         html << "    <div>[Header] " << logMsg << "</div>\n";
@@ -904,14 +987,12 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
              << "    <p><b>判定:</b> <span class=\""
              << (cr.verdict == "PASS" ? "pass" : (cr.verdict == "WARNING" ? "warn" : "fail"))
              << "\">" << cr.verdict << "</span></p>\n"
-             << "    <p>" << cr.summary << "</p>\n"
-             << "  </div>\n";
-
+             << "    <p>" << cr.summary << "</p>\n";
         if (!cr.threadResults.empty()) {
             const bool isMultiModel = (cr.mode == ConcurrencyTestMode::MultiModel);
-            html << "  <table>\n    <tr><th>"
+            html << "  </div>\n  <table>\n    <tr><th>"
                  << (isMultiModel ? "型号[实例]" : "线程")
-                 << "</th><th>随机参数</th><th>返回码</th><th>SEH</th><th>详情</th></tr>\n";
+                 << "</th><th>随机参数</th><th>返回码</th><th>状态</th><th>偏差</th><th>详情</th></tr>\n";
             for (const auto& tr : cr.threadResults) {
                 html << "    <tr><td>";
                 if (isMultiModel) {
@@ -921,21 +1002,35 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
                 }
                 html << "</td><td>" << tr.randomSummary
                      << "</td><td>" << tr.userReturnCode
-                     << "</td><td class=\"" << (tr.exceptionOccurred ? "fail\">异常" : "pass\">正常")
-                     << "</td><td>" << tr.errorLog << "</td></tr>\n";
+                     << "</td><td>";
+                if (tr.exceptionOccurred) {
+                    html << "<span class=\"fail\">SEH 异常</span>";
+                } else if (tr.dataRaceDetected) {
+                    html << "<span class=\"fail\">竞态串扰</span>";
+                } else if (tr.userReturnCode != 0) {
+                    html << "<span class=\"fail\">返回失败(" << tr.userReturnCode << ")</span>";
+                } else {
+                    html << "<span class=\"pass\">正常</span>";
+                }
+                html << "</td><td>"
+                     << (tr.deviation > 0.0 ? PlainDecimal(tr.deviation, 8) : "—")
+                     << "</td><td>"
+                     << (!tr.errorLog.empty() ? tr.errorLog : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
+                     << "</td></tr>\n";
             }
             html << "  </table>\n\n";
         } else {
-            html << "\n";
+            html << "  </div>\n\n";
         }
+
     };
 
-    emitConcSection("9. 多型号并行（多路径 DLL × 各型号数量）",
+    emitConcSection("10. 多型号并行（多路径 DLL × 各型号数量）",
                     fleetReport.multiModelReport, multiModelRan);
-    emitConcSection("10. 多线程稳定性（并行 UserMain）",
+    emitConcSection("11. 多线程稳定性（并行 UserMain）",
                     fleetReport.multiThreadReport, multiThreadRan);
 
-    html << "  <h2>11. 单线程多对象基线/交错测试</h2>\n";
+    html << "  <h2>12. 单线程多对象基线/交错测试</h2>\n";
     if (fleetReport.multiObjectReports.empty()) {
         html << "  <div class=\"card\"><p class=\"warn\">未完成多对象接口映射</p></div>\n";
     }
@@ -988,7 +1083,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
         html << "  </div>\n";
     }
 
-    html << "  <h2>12. 跨型号单线程对象交错</h2>\n";
+    html << "  <h2>13. 跨型号单线程对象交错</h2>\n";
     {
         const auto& fleetMo = fleetReport.fleetMultiObjectReport;
         if (fleetMo.verdict.empty()) {
@@ -1022,7 +1117,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
     }
 
     // 11. 日志
-    html << "  <h2>13. 预检过程日志追踪</h2>\n"
+    html << "  <h2>14. 预检过程日志追踪</h2>\n"
          << "  <div class=\"log-box\">\n";
     bool anyLog = false;
     for (const auto& m : fleetReport.modelReports) {
@@ -1088,4 +1183,36 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
 
 bool ReportGenerator::SaveFleetReportToFile(const FleetSessionReport& fleetReport, const std::string& outputPath) {
     return WriteTextFile(outputPath, GenerateFleetHtml(fleetReport));
+}
+
+bool ReportGenerator::ExportHtmlToPdf(const std::string& htmlContent, const std::string& pdfPath) {
+    if (htmlContent.empty() || pdfPath.empty()) return false;
+
+    QString qPdfPath = QString::fromUtf8(pdfPath.c_str(), static_cast<int>(pdfPath.size()));
+    QFileInfo fi(qPdfPath);
+    QDir().mkpath(fi.absolutePath());
+
+    QPrinter printer(QPrinter::HighResolution);
+    printer.setOutputFormat(QPrinter::PdfFormat);
+    printer.setOutputFileName(qPdfPath);
+    printer.setPageSize(QPrinter::A4);
+    printer.setOrientation(QPrinter::Portrait);
+    printer.setPageMargins(12, 12, 12, 12, QPrinter::Millimeter);
+
+    QTextDocument doc;
+    doc.setHtml(QString::fromUtf8(htmlContent.c_str(), static_cast<int>(htmlContent.size())));
+    doc.print(&printer);
+    return fi.exists() || QFileInfo::exists(qPdfPath);
+}
+
+bool ReportGenerator::SaveReportToPdf(const CombinedPrecheckReport& report, const std::string& outputPath) {
+    return ExportHtmlToPdf(GenerateHtml(report), outputPath);
+}
+
+bool ReportGenerator::SaveDualReportToPdf(const DualBuildPrecheckReport& dualReport, const std::string& outputPath) {
+    return ExportHtmlToPdf(GenerateDualBuildHtml(dualReport), outputPath);
+}
+
+bool ReportGenerator::SaveFleetReportToPdf(const FleetSessionReport& fleetReport, const std::string& outputPath) {
+    return ExportHtmlToPdf(GenerateFleetHtml(fleetReport), outputPath);
 }

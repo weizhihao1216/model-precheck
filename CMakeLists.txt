@@ -144,6 +144,7 @@ add_executable(model-precheck WIN32 ${SOURCES})
 target_link_libraries(model-precheck PRIVATE
     Qt5::Widgets
     Qt5::Charts
+    Qt5::PrintSupport
     Qt5::Qml
     Qt5::Quick
     Qt5::QuickControls2

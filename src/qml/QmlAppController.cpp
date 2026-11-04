@@ -28,6 +28,7 @@
 #include "core/HeaderAnalyzer.h"
 #include "core/LibAnalyzer.h"
 #include "core/PackageScanner.h"
+#include "core/ReportGenerator.h"
 #include "utils/SehHelper.h"
 #include "core/PeAnalyzer.h"
 #include "core/PerfProfiler.h"
@@ -2036,14 +2037,30 @@ void QmlAppController::exportReportAt(int index) {
         .value(QStringLiteral("path")).toString();
     QFile source(sourcePath);
     if (!source.open(QIODevice::ReadOnly)) return;
+
+    QString defaultName = QFileInfo(sourcePath).fileName();
+    QString selectedFilter;
     const QString targetPath = QFileDialog::getSaveFileName(
         nullptr, QString::fromUtf8("导出预检报告"),
-        QFileInfo(sourcePath).fileName(), QStringLiteral("HTML Files (*.html)"));
+        defaultName,
+        QString::fromUtf8("HTML 报告 (*.html);;PDF 报告 (*.pdf)"),
+        &selectedFilter);
     if (targetPath.isEmpty()) return;
-    QSaveFile target(targetPath);
-    if (!target.open(QIODevice::WriteOnly)) return;
-    target.write(source.readAll());
-    target.commit();
+
+    const QByteArray htmlBytes = source.readAll();
+    QString finalPath = targetPath;
+    if (selectedFilter.contains(QStringLiteral("*.pdf")) && !finalPath.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)) {
+        finalPath += QStringLiteral(".pdf");
+    }
+
+    if (finalPath.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)) {
+        ReportGenerator::ExportHtmlToPdf(htmlBytes.toStdString(), finalPath.toUtf8().toStdString());
+    } else {
+        QSaveFile target(finalPath);
+        if (!target.open(QIODevice::WriteOnly)) return;
+        target.write(htmlBytes);
+        target.commit();
+    }
 }
 
 void QmlAppController::openReportsFolder() {
@@ -2172,15 +2189,29 @@ void QmlAppController::exportReport() {
         emit precheckStateChanged();
         return;
     }
+    QString selectedFilter;
     const QString target = QFileDialog::getSaveFileName(
         nullptr, QString::fromUtf8("导出预检报告"),
         QStringLiteral("Precheck_Report.html"),
-        QStringLiteral("HTML Files (*.html)"));
+        QString::fromUtf8("HTML 报告 (*.html);;PDF 报告 (*.pdf)"),
+        &selectedFilter);
     if (target.isEmpty()) return;
+
     QFile source(m_cachedReportPath);
-    QSaveFile destination(target);
-    if (!source.open(QIODevice::ReadOnly) || !destination.open(QIODevice::WriteOnly))
-        return;
-    destination.write(source.readAll());
-    destination.commit();
+    if (!source.open(QIODevice::ReadOnly)) return;
+    const QByteArray htmlBytes = source.readAll();
+
+    QString finalPath = target;
+    if (selectedFilter.contains(QStringLiteral("*.pdf")) && !finalPath.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)) {
+        finalPath += QStringLiteral(".pdf");
+    }
+
+    if (finalPath.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)) {
+        ReportGenerator::ExportHtmlToPdf(htmlBytes.toStdString(), finalPath.toUtf8().toStdString());
+    } else {
+        QSaveFile destination(finalPath);
+        if (!destination.open(QIODevice::WriteOnly)) return;
+        destination.write(htmlBytes);
+        destination.commit();
+    }
 }

@@ -5281,10 +5281,16 @@ ApplicationWindow {
                                         spacing: 12
                                         Text {
                                             Layout.fillWidth: true
-                                            text: qsTr("成功 %1 · 异常 %2 · 返回失败 %3")
-                                                  .arg(modelData.successCount)
-                                                  .arg(modelData.exceptionCount)
-                                                  .arg(modelData.userFailCount)
+                                            text: Number(modelData.dataRaceCount || 0) > 0
+                                                  ? qsTr("成功 %1 · 竞态 %2 · 异常 %3 · 返回失败 %4")
+                                                        .arg(modelData.successCount)
+                                                        .arg(modelData.dataRaceCount)
+                                                        .arg(modelData.exceptionCount)
+                                                        .arg(modelData.userFailCount)
+                                                  : qsTr("成功 %1 · 异常 %2 · 返回失败 %3")
+                                                        .arg(modelData.successCount)
+                                                        .arg(modelData.exceptionCount)
+                                                        .arg(modelData.userFailCount)
                                             color: window.secondaryInk
                                             font.pixelSize: 12
                                         }
@@ -6973,6 +6979,7 @@ ApplicationWindow {
                         { label: qsTr("工作线程"), value: Number(concurrencyDetailPopup.detail.workerCount || 0), color: window.ink },
                         { label: qsTr("型号数"), value: Number(concurrencyDetailPopup.detail.modelTypeCount || 0), color: window.ink },
                         { label: qsTr("成功"), value: Number(concurrencyDetailPopup.detail.successCount || 0), color: window.green },
+                        { label: qsTr("竞态串扰"), value: Number(concurrencyDetailPopup.detail.dataRaceCount || 0), color: Number(concurrencyDetailPopup.detail.dataRaceCount || 0) === 0 ? window.green : window.red },
                         { label: qsTr("异常"), value: Number(concurrencyDetailPopup.detail.exceptionCount || 0), color: Number(concurrencyDetailPopup.detail.exceptionCount || 0) === 0 ? window.green : window.red },
                         { label: qsTr("返回失败"), value: Number(concurrencyDetailPopup.detail.userFailCount || 0), color: Number(concurrencyDetailPopup.detail.userFailCount || 0) === 0 ? window.green : window.red }
                     ]
@@ -7037,9 +7044,9 @@ ApplicationWindow {
                     width: ListView.view.width
                     height: Math.max(50, workerContent.implicitHeight + 16)
                     radius: 6
-                    color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
+                    color: modelData.exception || modelData.dataRace || modelData.userFail || modelData.returnCode !== 0
                            ? window.redPale : "white"
-                    border.color: modelData.exception || modelData.userFail || modelData.returnCode !== 0
+                    border.color: modelData.exception || modelData.dataRace || modelData.userFail || modelData.returnCode !== 0
                                   ? "#efb6ba" : window.line
                     RowLayout {
                         id: workerContent
@@ -7057,12 +7064,13 @@ ApplicationWindow {
                             font.pixelSize: 12
                             elide: Text.ElideMiddle
                         }
-                        Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 ? window.green : window.red; font.pixelSize: 12 }
+                        Text { Layout.preferredWidth: 64; text: modelData.returnCode; color: modelData.returnCode === 0 && !modelData.dataRace ? window.green : window.red; font.pixelSize: 12 }
                         Text {
                             Layout.preferredWidth: 72
                             text: modelData.exception ? qsTr("SEH 异常")
-                                  : (modelData.userFail || modelData.returnCode !== 0 ? qsTr("失败") : qsTr("成功"))
-                            color: modelData.exception || modelData.userFail || modelData.returnCode !== 0 ? window.red : window.green
+                                  : (modelData.dataRace ? qsTr("竞态串扰")
+                                  : (modelData.userFail || modelData.returnCode !== 0 ? qsTr("失败") : qsTr("成功")))
+                            color: modelData.exception || modelData.dataRace || modelData.userFail || modelData.returnCode !== 0 ? window.red : window.green
                             font.pixelSize: 12
                             font.weight: Font.DemiBold
                         }
@@ -7070,6 +7078,8 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: {
                                 var parts = []
+                                if (modelData.dataRace || Number(modelData.deviation || 0) > 0)
+                                    parts.push(qsTr("静默竞态 (偏差 %1)").arg(Number(modelData.deviation).toPrecision(6)))
                                 if ((modelData.randomSummary || "").length > 0) parts.push(modelData.randomSummary)
                                 if ((modelData.error || "").length > 0) parts.push(modelData.error)
                                 return parts.length > 0 ? parts.join(" · ") : qsTr("执行完成")
