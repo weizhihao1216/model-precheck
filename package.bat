@@ -82,11 +82,22 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [3/6] Deploying runtime dependencies...
-"%QT_DIR%\bin\windeployqt.exe" --qmldir "%PROJECT_DIR%src\qml" "%PKG_DIR%\model-precheck.exe"
+echo [3/6] Deploying runtime dependencies (optimized, excluding debug/translations/opengl-sw)...
+"%QT_DIR%\bin\windeployqt.exe" --release --no-translations --no-opengl-sw --no-virtualkeyboard --qmldir "%PROJECT_DIR%src\qml" "%PKG_DIR%\model-precheck.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] windeployqt failed
     exit /b 1
+)
+
+REM Strip development/unused tooling and redundant styles
+echo [3.1/6] Cleaning development tooling and unused styles...
+if exist "%PKG_DIR%\qmltooling" rmdir /S /Q "%PKG_DIR%\qmltooling"
+if exist "%PKG_DIR%\bearer" rmdir /S /Q "%PKG_DIR%\bearer"
+if exist "%PKG_DIR%\QtQuick\Controls.2\Imagine" rmdir /S /Q "%PKG_DIR%\QtQuick\Controls.2\Imagine"
+if exist "%PKG_DIR%\QtQuick\Controls.2\Material" rmdir /S /Q "%PKG_DIR%\QtQuick\Controls.2\Material"
+if exist "%PKG_DIR%\QtQuick\Controls.2\Universal" rmdir /S /Q "%PKG_DIR%\QtQuick\Controls.2\Universal"
+for %%F in (qicns.dll qtga.dll qwbmp.dll qtiff.dll qwebp.dll) do (
+    if exist "%PKG_DIR%\imageformats\%%F" del /F /Q "%PKG_DIR%\imageformats\%%F"
 )
 
 echo [4/6] Copying prerequisites and sample models...
@@ -108,6 +119,10 @@ if %ERRORLEVEL% neq 0 (
     echo [ERROR] Smoke test failed for package! Aborting package creation.
     exit /b 1
 )
+
+REM Clean smoke test temporary directory/files before archiving
+if exist "%PKG_DIR%\session" rmdir /S /Q "%PKG_DIR%\session"
+for /R "%PKG_DIR%\sample_models" %%F in (*__run*.dll) do if exist "%%F" del /F /Q "%%F"
 
 echo [6/6] Creating ZIP archive (%PACKAGE_NAME%.zip)...
 if exist "%PKG_ZIP%" del /F /Q "%PKG_ZIP%"
