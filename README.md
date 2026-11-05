@@ -132,10 +132,12 @@
 
 ## 2. 技术栈与开发环境
 
-- **编译器**：MSVC（推荐 VS2017+ / VS2022），`/utf-8`，`NOMINMAX`  
-- **UI**：QML（Qt Quick Controls 2）+ Qt Charts，入口 `QmlAppController`  
-- **构建**：CMake 3.12+；一键脚本 `build.bat`  
-- **系统 API**：Win32 PE、`LoadLibraryExW`、SEH、`psapi`  
+- **基准构建与发布环境**：Visual Studio 2022 (MSVC v143 x64) + Qt 5.14.2 (x64)
+- **兼容编译环境**：Visual Studio 2017+ (MSVC v141) / Visual Studio 2022 (MSVC v143)，Qt 5.11 / Qt 5.14+（统一使用 MSVC 14.x 运行时，二进制 ABI 保持完全兼容）
+- **编译参数**：MSVC `/utf-8`，`NOMINMAX`，C++14 标准
+- **UI 架构**：QML（Qt Quick Controls 2）+ Qt Charts，入口控制器 `QmlAppController`
+- **构建系统**：CMake 3.12+；一键自动化构建发布脚本 `build.bat` / `package.bat`（默认优先使用 VS2022 与 Qt 5.14）
+- **底层系统 API**：Win32 PE、`LoadLibraryExW`、MSVC 结构化异常处理 (SEH)、`psapi`
 
 ---
 
@@ -144,15 +146,15 @@
 ### 3.1 构建与发布打包
 
 ```powershell
-# 本地快速构建并安装到 dist/
+# 本地一键快速构建（优先探测 VS2022 与 Qt 5.14 并输出到 dist/）
 .\build.bat
 
-# 一键规范化发布打包（自动构建、windeployqt 依赖部署、装配 18 套测试靶标、冒烟测试并输出 zip）
+# 一键规范化发布打包（自动使用 VS2022+Qt 5.14 构建、瘦身运行时依赖部署、装配 18 套测试靶标、自动化冒烟测试并输出 zip）
 .\package.bat
 
-# 或手动 CMake 构建
-cmake -G "Visual Studio 15 2017" -A x64 -B build
-cmake --build build --config Release --target model-precheck
+# 或手动 CMake 命令构建（指定 VS2022 与 Qt 5.14 路径）
+cmake -G "Visual Studio 17 2022" -A x64 -B build -DCMAKE_PREFIX_PATH="D:\HR\DEV\ThirdParty\Qt5.14\vc143\x64"
+cmake --build build --config Release --target install
 ```
 
 - **发布包命名规范**：遵循 `{英文代号}_{版本号}_{平台}.{扩展名}`（产物为 `dist/model-precheck_v1.0.0_windows.zip` 以及独立目录 `dist/model-precheck_v1.0.0_windows/`）。

@@ -67,7 +67,7 @@ if not defined QT_DIR (
 echo Using Qt: %QT_DIR%
 echo.
 
-echo [1/4] Configuring CMake Project (x64)...
+echo [1/4] Configuring CMake Project (x64, Prioritizing VS2022)...
 if defined CMAKE_GENERATOR (
     echo !CMAKE_GENERATOR! | findstr /I "Win64" >nul
     if !ERRORLEVEL! equ 0 (
@@ -76,7 +76,20 @@ if defined CMAKE_GENERATOR (
         cmake -G "%CMAKE_GENERATOR%" -A x64 -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
     )
 ) else (
-    cmake -B "%BUILD_DIR%" -A x64 -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+    REM Try Visual Studio 2022 first
+    set "VS_GENERATOR="
+    cmake -G "Visual Studio 17 2022" -A x64 -B "%BUILD_DIR%_probe" >nul 2>nul
+    if !ERRORLEVEL! equ 0 (
+        set "VS_GENERATOR=Visual Studio 17 2022"
+        rmdir /S /Q "%BUILD_DIR%_probe" >nul 2>nul
+    )
+    if defined VS_GENERATOR (
+        echo Using Generator: !VS_GENERATOR!
+        cmake -G "!VS_GENERATOR!" -A x64 -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+    ) else (
+        echo Using Generator: Default MSVC ^(Fallback^)
+        cmake -B "%BUILD_DIR%" -A x64 -DCMAKE_INSTALL_PREFIX="%DIST_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+    )
 )
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configuration failed!

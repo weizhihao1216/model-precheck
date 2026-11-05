@@ -6,7 +6,7 @@ This file provides system context, tech stack rules, and component locations for
 
 - **Project Purpose**: Validate third-party C++ weapon model DLLs prior to simulation engine integration.
 - **Primary Spec File**: See [`README.md`](file:///d:/HR/Game/ModelPrecheck/README.md) for full requirement mapping (F1-F13).
-- **Environment**: Visual Studio 2017 (MSVC v141) / VS 2022 (MSVC v143), Qt 5.11 / Qt 5.14+ x64 (resolved dynamically via %QTDIR% or %ThirdPart%), CMake 3.12+.
+- **Environment**: Visual Studio 2022 (MSVC v143 x64) [Primary/Recommended] / VS 2017 (MSVC v141) [Compatible], Qt 5.14.2 x64 (resolved dynamically via %QTDIR% or %ThirdPart%), CMake 3.12+.
 
 ## 2. Mandatory Rules
 
@@ -32,6 +32,6 @@ This file provides system context, tech stack rules, and component locations for
 .\package.bat
 
 # Or manual CMake commands
-cmake -B build_pkg -A x64 -DCMAKE_INSTALL_PREFIX=dist\model-precheck_v1.0.0_windows
+cmake -G "Visual Studio 17 2022" -A x64 -B build_pkg -DCMAKE_INSTALL_PREFIX=dist\model-precheck_v1.0.0_windows -DCMAKE_PREFIX_PATH="%ThirdPart%\Qt5.14\vc143\x64"
 cmake --build build_pkg --config Release --target install
 ```

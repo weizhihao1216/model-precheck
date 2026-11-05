@@ -50,6 +50,7 @@ if not defined QT_DIR (
 echo Qt Path       : %QT_DIR%
 echo Package Name  : %PACKAGE_NAME%
 echo Output Dir    : %DIST_ROOT%
+echo Target Base   : Visual Studio 2022 (MSVC v143) / Qt 5.14 (x64)
 echo.
 
 REM 3. Clean and prepare dist directory
@@ -66,10 +67,25 @@ set "BUILD_DIR=%PROJECT_DIR%build_pkg"
 if exist "%PKG_DIR%" rmdir /S /Q "%PKG_DIR%"
 mkdir "%PKG_DIR%"
 
-echo [1/6] Configuring CMake...
+echo [1/6] Configuring CMake (Prioritizing VS2022)...
 set "QTDIR=%QT_DIR%"
 set "PATH=%QT_DIR%\bin;%PATH%"
-cmake -B "%BUILD_DIR%" -A x64 -DCMAKE_INSTALL_PREFIX="%PKG_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+
+REM Detect VS2022 generator availability
+set "VS_GENERATOR="
+cmake -G "Visual Studio 17 2022" -A x64 -B "%DIST_ROOT%\_probe_vs" >nul 2>nul
+if !ERRORLEVEL! equ 0 (
+    set "VS_GENERATOR=Visual Studio 17 2022"
+    rmdir /S /Q "%DIST_ROOT%\_probe_vs" >nul 2>nul
+)
+
+if defined VS_GENERATOR (
+    echo Using Generator: !VS_GENERATOR!
+    cmake -G "!VS_GENERATOR!" -A x64 -B "%BUILD_DIR%" -DCMAKE_INSTALL_PREFIX="%PKG_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+) else (
+    echo Using Generator: Default MSVC ^(Fallback^)
+    cmake -B "%BUILD_DIR%" -A x64 -DCMAKE_INSTALL_PREFIX="%PKG_DIR%" -DCMAKE_PREFIX_PATH="%QT_DIR%"
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configure failed
     exit /b 1
