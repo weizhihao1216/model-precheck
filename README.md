@@ -317,4 +317,10 @@ sample_models/...
 2. DLL 调用经 SEH（`SehHelper`）  
 3. 勿在头文件引入 `QT_CHARTS_USE_NAMESPACE`；Charts 仅放 `.cpp`  
 4. 头文件冲突分析避免对大文件使用 MSVC 易栈溢出的 `std::regex`  
-5. Release 宿主不要对 `/MDd` Debug 模型 DLL 做进程内 `LoadLibrary`（用 SKIP 或 Debug 宿主）  
+5. Release 宿主不要对 `/MDd` Debug 模型 DLL 做进程内 `LoadLibrary`（用 SKIP 或 Debug 宿主）
+
+---
+
+## 7. 开源许可证 (License)
+
+本项目基于 [MIT License](LICENSE) 开源。
