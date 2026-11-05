@@ -141,24 +141,26 @@
 
 ## 3. 使用说明
 
-### 3.1 构建与启动
+### 3.1 构建与发布打包
 
 ```powershell
-# 一键构建并安装到 dist/
+# 本地快速构建并安装到 dist/
 .\build.bat
 
-# 或手动构建
-cmake -G "Visual Studio 17 2022" -A x64 -B build
+# 一键规范化发布打包（自动构建、windeployqt 依赖部署、装配 18 套测试靶标、冒烟测试并输出 zip）
+.\package.bat
+
+# 或手动 CMake 构建
+cmake -G "Visual Studio 15 2017" -A x64 -B build
 cmake --build build --config Release --target model-precheck
 ```
 
-可执行文件：`build\Release\model-precheck.exe`（或 `dist\model-precheck.exe`）。若 `dist` 被占用无法覆盖，请直接运行 `build\Release` 下新编译产物。
+- **发布包命名规范**：遵循 `{英文代号}_{版本号}_{平台}.{扩展名}`（产物为 `dist/model-precheck_v1.0.0_windows.zip` 以及独立目录 `dist/model-precheck_v1.0.0_windows/`）。
+- **绿色解压即用**：发布包内已自动集成完整的 Qt 运行时库、QML 插件、平台插件（`platforms/qwindows.dll`）、内置 18 套测试靶标（`sample_models/`）以及环境工具包（`prerequisites/`），脱机即可直接运行 `model-precheck.exe`。
 
-样例模型包：`dist\sample_models\<型号名>\{include,lib,models}\`。
+### 3.1.1 换机部署（拷贝发布目录）
 
-### 3.1.1 换机部署（拷贝 dist）
-
-整夹拷贝 `dist/` 即可。目标机说明见 **`dist/README.md`**：
+整夹拷贝解压后的发布目录即可。目标机说明见 **`dist/model-precheck_v1.0.0_windows/README.md`**：
 
 - 缺 VC 运行库 → `dist/prerequisites/vc_redist.x64.exe`
 - 需本机编译 Harness → `dist/prerequisites/install_build_tools.bat`
@@ -210,21 +212,19 @@ YourModelPackage\
 - **型号与代码**、**专项测试**、**底部日志**  
 - 性能页含 **内存上限(MB)**（默认 256；0=不限制）
 
-### 3.5 样例模型（`dist/sample_models` 测试用例包）
+### 3.5 内置测试靶标（`sample_models/` 测试用例包）
 
-由 `sample_models/build_testcase_models.ps1` 生成，与 `dist/模型集成问题.xlsx`「测试用例索引」对应：
+仓库内置 18 套典型武器模型测试靶标（包含头文件、导入库及 Debug/Release 动态库），与 `dist/模型集成问题.xlsx`「测试用例索引」完全对应：
 
 - `ReleaseOnly_A/B` — 仅 Release；实测 `D=FAIL`  
 - `HeaderClash_A/B` — 头冲突；成对冲突 FAIL  
 - `ThreadUnsafe_A/B` — 非线程安全 / 全局单例；同句柄可检出，mt SEH 难必现  
-- `SingleInstance_A/B` — 单槽位越界；双 Create 未必 SEH  
-- `SharedKernel_A/B` — 共享映射干扰；需成对同进程  
-- `CrtMd_A` / `CrtMt_B` — CRT 对照；PE 差异，非跨堆专项  
-- `MemLeak_A` — 故意泄漏；压测可见内存增长  
-- `SehFault_A/B` — 故意 SEH；Step/Init 异常可捕获  
-- `TcPass_A/B/C` — 干净对照；单包宜 PASS，A+C 头可共存  
-
-历史演示包名（`CompatibleWeapon*` / `ConflictWeapon*` / `PrecheckDemoWeapon` 等）若仍在树中，用法与上列同类，优先以 `sample_models` 测试包为准。
+- `SingleInstance_A/B` — 单槽位越界；双 Create 产生状态损坏  
+- `SharedKernel_A/B` — 共享映射干扰；成对同进程并发数据污染  
+- `CrtMd_A` / `CrtMt_B` — CRT 对照；PE 差异 (/MD vs /MT)  
+- `MemLeak_A` — 故意泄漏；性能压测可捕获内存持续上升  
+- `SehFault_A/B` — 故意硬件异常；Step 空指针 / Init 除零可被 SEH 精准拦截  
+- `TcPass_A/B/C` — 干净对照；单包宜 PASS，A+C 头可共存（支持多实例与互斥安全）
 
 ---
 
@@ -261,13 +261,14 @@ ModelPrecheck/
 ├── README.md
 ├── AGENTS.md
 ├── build.bat
+├── package.bat                  # 一键规范化打包脚本 (输出 model-precheck_v1.0.0_windows.zip)
 ├── CMakeLists.txt
-├── third_party/
 ├── src/
 │   ├── core/
 │   ├── utils/
-│   └── ui/
-├── sample_models/               # 源码 + build_testcase_models.ps1
+│   ├── ui/
+│   └── qml/
+├── sample_models/               # 内置 18 套测试靶标 (include/ lib/ models/)
 ├── tests/                       # StaticPrecheckSmoke、SampleModelsMatrix…
 ├── deploy/prerequisites/
 └── dist/                        # 安装输出、模型集成问题.xlsx、sample_models/
