@@ -642,9 +642,10 @@ std::string PrecheckSummary::ToHtmlSection(const PrecheckSummaryBoard& board,
 
     for (const auto& item : board.items) {
         if (!includeBuildConfigRow && item.id == "build_config") continue;
-        html << "    <tr><td>" << item.name << "</td><td class=\""
+        html << "    <tr><td>" << ReportGenerator::EscapeHtml(item.name) << "</td><td class=\""
              << StateCssClass(item.state) << "\">" << StateLabel(item.state)
-             << "</td><td>" << item.reason << "</td><td>" << item.consequence
+             << "</td><td>" << ReportGenerator::EscapeHtml(item.reason) << "</td><td>"
+             << ReportGenerator::EscapeHtml(item.consequence)
              << "</td></tr>\n";
     }
     html << "  </table>\n\n";

@@ -158,13 +158,19 @@ QmlAppController::QmlAppController(QObject* parent)
 }
 
 QmlAppController::~QmlAppController() {
+    if (m_precheckCancelFlag) {
+        m_precheckCancelFlag->store(true);
+    }
     if (m_precheckThread && m_precheckThread->isRunning()) {
         m_precheckThread->quit();
-        m_precheckThread->wait();
+        if (!m_precheckThread->wait(1500)) {
+            // 超时避免退出时阻塞界面
+        }
     }
     if (m_specialtyThread && m_specialtyThread->isRunning()) {
         m_specialtyThread->quit();
-        m_specialtyThread->wait();
+        if (!m_specialtyThread->wait(1500)) {
+        }
     }
 }
 
@@ -2118,10 +2124,13 @@ void QmlAppController::runPrecheck() {
     ensureModelsCompiledForPrecheck();
     setBusyProgress(0.30);
 
+    m_precheckCancelFlag = std::make_shared<std::atomic<bool>>(false);
+    auto cancelFlag = m_precheckCancelFlag;
     const SessionSnapshot snapshot = m_snapshot;
-    QThread* thread = QThread::create([this, snapshot]() {
+    QThread* thread = QThread::create([this, snapshot, cancelFlag]() {
         const QmlPrecheckResult result = QmlPrecheckRunner::Run(
-            snapshot, [this](const QString& text) {
+            snapshot, [this, cancelFlag](const QString& text) {
+                if (cancelFlag && cancelFlag->load()) return;
                 QMetaObject::invokeMethod(this, [this, text]() {
                     m_precheckProgress = text;
                     // 预检阶段无法预知总步数，按回调次数在 30%~95% 之间单调推进。
@@ -2131,7 +2140,12 @@ void QmlAppController::runPrecheck() {
                     emit logsChanged();
                     emit precheckStateChanged();
                 }, Qt::QueuedConnection);
+            },
+            [cancelFlag]() {
+                return cancelFlag && cancelFlag->load();
             });
+
+        if (cancelFlag && cancelFlag->load()) return;
 
         QMetaObject::invokeMethod(this, [this, result]() {
             m_resultModels = result.models;
@@ -2172,6 +2186,16 @@ void QmlAppController::runPrecheck() {
         thread->deleteLater();
     });
     thread->start();
+}
+
+void QmlAppController::cancelPrecheck() {
+    if (m_precheckCancelFlag) {
+        m_precheckCancelFlag->store(true);
+    }
+    m_precheckRunning = false;
+    setBusyProgress(-1.0);
+    m_precheckProgress = QString::fromUtf8("预检已取消");
+    emit precheckStateChanged();
 }
 
 void QmlAppController::openReport() {

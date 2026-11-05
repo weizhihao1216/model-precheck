@@ -131,12 +131,35 @@ bool SafeCallDestroy(FnModelDestroy fn, DWORD* outExceptionCode) {
     }
 }
 
-bool SafeCallGetInfo(FnModelGetInfo fn, std::string& outInfo, DWORD* outExceptionCode) {
-    if (!fn) return false;
-    const char* str = nullptr;
+static bool SafeCallGetInfoRaw(FnModelGetInfo fn, const char** outStr, DWORD* outExceptionCode) {
+    if (!fn || !outStr) return false;
     __try {
-        str = fn();
+        *outStr = fn();
         if (outExceptionCode) *outExceptionCode = 0;
+        return true;
+    }
+    __except (FilterSehException(GetExceptionCode())) {
+        DWORD code = GetExceptionCode();
+        CheckAndResetStackOverflow(code);
+        if (outExceptionCode) *outExceptionCode = code;
+        *outStr = nullptr;
+        return false;
+    }
+}
+
+static bool SafeCopyCStringGuarded(const char* src, char* dst, size_t maxBytes, size_t* outLen, DWORD* outExceptionCode) {
+    if (outLen) *outLen = 0;
+    if (!src || !dst || maxBytes == 0) return false;
+    __try {
+        size_t i = 0;
+        while (i + 1 < maxBytes && src[i] != '\0') {
+            dst[i] = src[i];
+            ++i;
+        }
+        dst[i] = '\0';
+        if (outLen) *outLen = i;
+        if (outExceptionCode) *outExceptionCode = 0;
+        return true;
     }
     __except (FilterSehException(GetExceptionCode())) {
         DWORD code = GetExceptionCode();
@@ -144,12 +167,31 @@ bool SafeCallGetInfo(FnModelGetInfo fn, std::string& outInfo, DWORD* outExceptio
         if (outExceptionCode) *outExceptionCode = code;
         return false;
     }
+}
 
-    if (str) {
-        outInfo = str;
-    } else {
-        outInfo = "";
+bool SafeCallGetInfo(FnModelGetInfo fn, std::string& outInfo, DWORD* outExceptionCode) {
+    outInfo.clear();
+    if (!fn) return false;
+    const char* str = nullptr;
+    DWORD fnExc = 0;
+    if (!SafeCallGetInfoRaw(fn, &str, &fnExc)) {
+        if (outExceptionCode) *outExceptionCode = fnExc;
+        return false;
     }
+    if (!str) {
+        if (outExceptionCode) *outExceptionCode = 0;
+        return true;
+    }
+
+    char buffer[4096];
+    size_t copyLen = 0;
+    DWORD copyExc = 0;
+    if (!SafeCopyCStringGuarded(str, buffer, sizeof(buffer), &copyLen, &copyExc)) {
+        if (outExceptionCode) *outExceptionCode = copyExc;
+        return false;
+    }
+    outInfo.assign(buffer, copyLen);
+    if (outExceptionCode) *outExceptionCode = 0;
     return true;
 }
 
@@ -216,11 +258,6 @@ bool SafeCallDestroyEx(FnModelDestroyEx fn, ModelHandle handle, DWORD* outExcept
     }
 }
 
-namespace {
-
-std::atomic<bool> g_loadedPrivateModule(false);
-std::atomic<unsigned> g_privateCopySeq(0);
-
 std::wstring Utf8ToWidePath(const std::string& utf8) {
     if (utf8.empty()) return std::wstring();
     const int n = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
@@ -229,6 +266,11 @@ std::wstring Utf8ToWidePath(const std::string& utf8) {
     MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], n);
     return wide;
 }
+
+namespace {
+
+std::atomic<bool> g_loadedPrivateModule(false);
+std::atomic<unsigned> g_privateCopySeq(0);
 
 std::string DirectoryOfPath(const std::string& path) {
     const size_t slash = path.find_last_of("\\/");

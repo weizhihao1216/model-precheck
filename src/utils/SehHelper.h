@@ -50,6 +50,7 @@ typedef void (*FnModelDestroyEx)(ModelHandle handle);
 
 // SEH Helper functions to isolate hardware exceptions (Access Violation, Divide-by-Zero, Stack Overflow)
 std::string SehCodeToString(DWORD code);
+std::wstring Utf8ToWidePath(const std::string& utf8);
 
 typedef void (*FnVoidNoArg)();
 typedef int (*FnIntNoArg)();

@@ -27,9 +27,11 @@ struct QmlPrecheckResult {
 class QmlPrecheckRunner {
 public:
     using ProgressCallback = std::function<void(const QString&)>;
+    using AbortCallback = std::function<bool()>;
 
     static QmlPrecheckResult Run(const SessionSnapshot& snapshot,
-                                 const ProgressCallback& progress = {});
+                                 const ProgressCallback& progress = {},
+                                 const AbortCallback& isAborted = {});
 };
 
 #endif // QML_PRECHECK_RUNNER_H

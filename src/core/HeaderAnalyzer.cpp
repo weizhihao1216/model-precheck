@@ -1,4 +1,5 @@
 #include "HeaderAnalyzer.h"
+#include "../utils/SehHelper.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -425,7 +426,11 @@ HeaderAnalysisReport HeaderAnalyzer::AnalyzeHeader(const std::string& headerPath
     report.hasPackDirective = false;
     report.overallPass = true;
 
-    std::ifstream file(headerPath, std::ios::binary);
+    const std::wstring wHeaderPath = Utf8ToWidePath(headerPath);
+    std::ifstream file(wHeaderPath.c_str(), std::ios::binary);
+    if (!file.is_open()) {
+        file.open(headerPath.c_str(), std::ios::binary);
+    }
     if (!file.is_open()) {
         report.overallPass = false;
         report.logMessages.push_back("FAIL: 无法打开头文件: " + headerPath);
@@ -845,7 +850,11 @@ HeaderConflictReport HeaderAnalyzer::AnalyzeHeaderSet(
     constexpr size_t kMaxHeaderBytes = 4 * 1024 * 1024;
 
     for (const std::string& path : headerPaths) {
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        const std::wstring wPath = Utf8ToWidePath(path);
+        std::ifstream file(wPath.c_str(), std::ios::binary | std::ios::ate);
+        if (!file.is_open()) {
+            file.open(path.c_str(), std::ios::binary | std::ios::ate);
+        }
         if (!file.is_open()) {
             report.logMessages.push_back("WARN: 冲突分析无法打开头文件: " + path);
             continue;
@@ -879,7 +888,8 @@ HeaderConflictReport HeaderAnalyzer::AnalyzeHeaderSet(
             files.insert(type->file);
             bodies.insert(type->normalizedBody);
         }
-        if (entry.second.size() < 2) continue;
+        // Only report as cross-header duplicate/ODR conflict if the symbol appears in 2 or more distinct files
+        if (files.size() < 2) continue;
         HeaderConflictIssue issue;
         issue.symbol = entry.first;
         issue.files.assign(files.begin(), files.end());

@@ -21,11 +21,21 @@
 
 namespace {
 
+static inline std::string EscapeHtml(const std::string& input) {
+    return ReportGenerator::EscapeHtml(input);
+}
+
+
 bool WriteTextFile(const std::string& outputPath, const std::string& content) {
+    if (outputPath.empty()) return false;
+    QString qPath = QString::fromUtf8(outputPath.c_str(), static_cast<int>(outputPath.size()));
+    QFileInfo fi(qPath);
+    QDir().mkpath(fi.absolutePath());
+
 #ifdef _WIN32
     int len = MultiByteToWideChar(CP_UTF8, 0, outputPath.c_str(), -1, nullptr, 0);
-    if (len > 0) {
-        std::wstring wpath(len, L'\0');
+    if (len > 1) {
+        std::wstring wpath(static_cast<size_t>(len - 1), L'\0');
         MultiByteToWideChar(CP_UTF8, 0, outputPath.c_str(), -1, &wpath[0], len);
         std::ofstream file(wpath.c_str(), std::ios::out | std::ios::trunc);
         if (file.is_open()) {
@@ -277,10 +287,10 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
         if (!report.headerConflictReport.issues.empty()) {
             html << "  <table><tr><th>类型</th><th>级别</th><th>符号</th><th>说明</th></tr>\n";
             for (const auto& issue : report.headerConflictReport.issues) {
-                html << "  <tr><td>" << issue.category << "</td><td class=\""
+                html << "  <tr><td>" << EscapeHtml(issue.category) << "</td><td class=\""
                      << (issue.severity == "FAIL" ? "fail" : "warn") << "\">"
-                     << issue.severity << "</td><td>" << issue.symbol
-                     << "</td><td>" << issue.detail << "</td></tr>\n";
+                     << issue.severity << "</td><td>" << EscapeHtml(issue.symbol)
+                     << "</td><td>" << EscapeHtml(issue.detail) << "</td></tr>\n";
             }
             html << "  </table>\n";
         }
@@ -308,8 +318,8 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
          << "  <table>\n"
          << "    <tr><th>依赖 DLL 名称</th><th>解析状态</th><th>系统 / 物理路径</th></tr>\n";
     for (const auto& dep : report.peReport.importedDlls) {
-        html << "    <tr><td>" << dep.name << "</td><td class=\"" << (dep.found ? "pass\">FOUND" : "fail\">MISSING")
-             << "</td><td><code>" << dep.resolvedPath << "</code></td></tr>\n";
+        html << "    <tr><td>" << EscapeHtml(dep.name) << "</td><td class=\"" << (dep.found ? "pass\">FOUND" : "fail\">MISSING")
+             << "</td><td><code>" << EscapeHtml(dep.resolvedPath) << "</code></td></tr>\n";
     }
     html << "  </table>\n\n";
 
@@ -318,7 +328,7 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
          << "  <table>\n"
          << "    <tr><th>导出函数名</th><th>Ordinal 序号</th><th>接口匹配状态</th></tr>\n";
     for (const auto& exp : report.peReport.exportedSymbols) {
-        html << "    <tr><td><code>" << exp.name << "</code></td><td>" << exp.ordinal << "</td><td class=\""
+        html << "    <tr><td><code>" << EscapeHtml(exp.name) << "</code></td><td>" << exp.ordinal << "</td><td class=\""
              << (exp.isRequiredInterface ? "pass\">Core Interface" : "pass\">Optional") << "</td></tr>\n";
     }
     html << "  </table>\n\n";
@@ -354,7 +364,7 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
              << (report.trajReport.outOfBoundsCount == 0 ? "<span class=\"pass\">0</span>"
                                                          : "<span class=\"fail\">" + std::to_string(report.trajReport.outOfBoundsCount) + "</span>")
              << "</p>\n"
-             << "    <p><b>单位检查说明:</b> " << (report.trajReport.unitCheckLog.empty() ? "数值范围正常" : report.trajReport.unitCheckLog) << "</p>\n"
+             << "    <p><b>单位检查说明:</b> " << (EscapeHtml(report.trajReport.unitCheckLog.empty() ? "数值范围正常" : report.trajReport.unitCheckLog)) << "</p>\n"
              << "    <p><b>轨迹检查判定:</b> <span class=\""
              << (report.trajReport.overallPass ? "pass\">PASS" : "fail\">FAIL") << "</span></p>\n";
     }
@@ -362,10 +372,10 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
     if (!report.trajReport.warnings.empty() || !report.trajReport.errors.empty()) {
         html << "  <table><tr><th>类型</th><th>级别</th><th>详情</th></tr>\n";
         for (const auto& w : report.trajReport.warnings) {
-            html << "  <tr><td>轨迹告警</td><td class=\"warn\">WARN</td><td>" << w << "</td></tr>\n";
+            html << "  <tr><td>轨迹告警</td><td class=\"warn\">WARN</td><td>" << EscapeHtml(w) << "</td></tr>\n";
         }
         for (const auto& e : report.trajReport.errors) {
-            html << "  <tr><td>轨迹异常</td><td class=\"fail\">FAIL</td><td>" << e << "</td></tr>\n";
+            html << "  <tr><td>轨迹异常</td><td class=\"fail\">FAIL</td><td>" << EscapeHtml(e) << "</td></tr>\n";
         }
         html << "  </table>\n\n";
     } else {
@@ -411,7 +421,7 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
                 html << "</td><td>"
                      << (tr.deviation > 0.0 ? PlainDecimal(tr.deviation, 8) : "—")
                      << "</td><td>"
-                     << (!tr.errorLog.empty() ? tr.errorLog : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
+                     << (!tr.errorLog.empty() ? EscapeHtml(tr.errorLog) : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
                      << "</td></tr>\n";
             }
             html << "  </table>\n\n";
@@ -452,25 +462,25 @@ std::string ReportGenerator::GenerateHtml(const CombinedPrecheckReport& report) 
     html << "  <h2>10. 预检过程日志追踪</h2>\n"
          << "  <div class=\"log-box\">\n";
     for (const auto& logMsg : report.headerReport.logMessages) {
-        html << "    <div>[Header] " << logMsg << "</div>\n";
+        html << "    <div>[Header] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& logMsg : report.libReport.logMessages) {
-        html << "    <div>[LIB] " << logMsg << "</div>\n";
+        html << "    <div>[LIB] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& logMsg : report.peReport.logMessages) {
-        html << "    <div>[PE] " << logMsg << "</div>\n";
+        html << "    <div>[PE] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& logMsg : report.multiModelReport.logMessages) {
-        html << "    <div>[MultiModel] " << logMsg << "</div>\n";
+        html << "    <div>[MultiModel] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& logMsg : report.multiThreadReport.logMessages) {
-        html << "    <div>[MultiThread] " << logMsg << "</div>\n";
+        html << "    <div>[MultiThread] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& logMsg : report.multiObjectReport.logMessages) {
-        html << "    <div>[MultiObject] " << logMsg << "</div>\n";
+        html << "    <div>[MultiObject] " << EscapeHtml(logMsg) << "</div>\n";
     }
     if (!report.perfReport.exceptionLog.empty()) {
-        html << "    <div class=\"fail\">" << report.perfReport.exceptionLog << "</div>\n";
+        html << "    <div class=\"fail\">" << EscapeHtml(report.perfReport.exceptionLog) << "</div>\n";
     }
     html << "  </div>\n";
 
@@ -595,21 +605,21 @@ std::string ReportGenerator::GenerateDualBuildHtml(const DualBuildPrecheckReport
     html << "  <h2>6. 预检过程综合日志</h2>\n"
          << "  <div class=\"log-box\">\n";
     for (const auto& logMsg : dualReport.packageFiles.scanLog) {
-        html << "    <div>[Scan] " << logMsg << "</div>\n";
+        html << "    <div>[Scan] " << EscapeHtml(logMsg) << "</div>\n";
     }
     for (const auto& hRep : dualReport.headerReports) {
         for (const auto& logMsg : hRep.logMessages) {
-            html << "    <div>[Header] " << logMsg << "</div>\n";
+            html << "    <div>[Header] " << EscapeHtml(logMsg) << "</div>\n";
         }
     }
     for (const auto& lRep : dualReport.libReports) {
         for (const auto& logMsg : lRep.logMessages) {
-            html << "    <div>[LIB] " << logMsg << "</div>\n";
+            html << "    <div>[LIB] " << EscapeHtml(logMsg) << "</div>\n";
         }
     }
     for (const auto& dRep : dualReport.dllReports) {
         for (const auto& logMsg : dRep.peReport.logMessages) {
-            html << "    <div>[DLL-PE] " << logMsg << "</div>\n";
+            html << "    <div>[DLL-PE] " << EscapeHtml(logMsg) << "</div>\n";
         }
     }
     html << "  </div>\n";
@@ -869,10 +879,10 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
         }
         // 型号/级别是固定短标签，限制换行才能保持一列一个词；
         // 涉及文件与说明两列承担换行，避免被这两列挤压成竖排文字。
-        html << "  <tr><td class=\"nowrap\">跨型号/包级</td><td>" << issue.category
+        html << "  <tr><td class=\"nowrap\">跨型号/包级</td><td>" << EscapeHtml(issue.category)
              << "</td><td class=\"" << (issue.severity == "FAIL" ? "fail" : "warn")
-             << " nowrap\">" << issue.severity << "</td><td>" << issue.symbol
-             << "</td><td><code>" << files << "</code></td><td>" << issue.detail
+             << " nowrap\">" << issue.severity << "</td><td>" << EscapeHtml(issue.symbol)
+             << "</td><td><code>" << files << "</code></td><td>" << EscapeHtml(issue.detail)
              << "</td></tr>\n";
         ++conflictRows;
     }
@@ -914,9 +924,9 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
             html << "      <p><b>导入依赖</b></p>\n<table>\n"
                  << "      <tr><th>依赖 DLL</th><th>状态</th><th>解析路径</th></tr>\n";
             for (const auto& dep : d.peReport.importedDlls) {
-                html << "      <tr><td>" << dep.name << "</td><td class=\""
+                html << "      <tr><td>" << EscapeHtml(dep.name) << "</td><td class=\""
                      << (dep.found ? "pass\">找到" : "fail\">缺失") << "</td><td><code>"
-                     << dep.resolvedPath << "</code></td></tr>\n";
+                     << EscapeHtml(dep.resolvedPath) << "</code></td></tr>\n";
             }
             if (d.peReport.importedDlls.empty()) {
                 html << "      <tr><td colspan=\"3\">无</td></tr>\n";
@@ -942,7 +952,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
                  << " | 缺失接口: " << d.loadReport.missingSymbolCount << "</p>\n"
                  << "      <table><tr><th>导出函数</th><th>Ordinal</th></tr>\n";
             for (const auto& exp : d.peReport.exportedSymbols) {
-                html << "      <tr><td>" << exp.name << "</td><td>" << exp.ordinal << "</td></tr>\n";
+                html << "      <tr><td>" << EscapeHtml(exp.name) << "</td><td>" << exp.ordinal << "</td></tr>\n";
             }
             if (d.peReport.exportedSymbols.empty()) {
                 html << "      <tr><td colspan=\"2\">无</td></tr>\n";
@@ -1015,7 +1025,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
                 html << "</td><td>"
                      << (tr.deviation > 0.0 ? PlainDecimal(tr.deviation, 8) : "—")
                      << "</td><td>"
-                     << (!tr.errorLog.empty() ? tr.errorLog : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
+                     << (!tr.errorLog.empty() ? EscapeHtml(tr.errorLog) : (tr.dataRaceDetected ? "检测到静默数据竞态（与基线不一致）" : "无"))
                      << "</td></tr>\n";
             }
             html << "  </table>\n\n";
@@ -1076,7 +1086,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
                          ? ("0x" + std::to_string(object.exceptionCode)
                             + " step=" + std::to_string(object.faultStep))
                          : "无")
-                     << "</td><td>" << object.detail << "</td></tr>\n";
+                     << "</td><td>" << EscapeHtml(object.detail) << "</td></tr>\n";
             }
             html << "    </table>\n";
         }
@@ -1110,7 +1120,7 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
                      << d.interleavedTrajectory.size() << "</td><td>"
                      << PlainDecimal(d.maxPositionDeviation) << "</td><td>"
                      << d.baselineReturnCode << " / " << d.interleavedReturnCode
-                     << "</td><td>" << d.detail << "</td></tr>\n";
+                     << "</td><td>" << EscapeHtml(d.detail) << "</td></tr>\n";
             }
             html << "  </table></div>\n";
         }
@@ -1124,52 +1134,52 @@ std::string ReportGenerator::GenerateFleetHtml(const FleetSessionReport& fleetRe
         const std::string tag = m.modelName.empty() ? "Model" : m.modelName;
         for (const auto& hRep : m.headerReports) {
             for (const auto& logMsg : hRep.logMessages) {
-                html << "    <div>[" << tag << "/Header] " << logMsg << "</div>\n";
+                html << "    <div>[" << tag << "/Header] " << EscapeHtml(logMsg) << "</div>\n";
                 anyLog = true;
             }
         }
         for (const auto& lRep : m.libReports) {
             for (const auto& logMsg : lRep.logMessages) {
-                html << "    <div>[" << tag << "/LIB] " << logMsg << "</div>\n";
+                html << "    <div>[" << tag << "/LIB] " << EscapeHtml(logMsg) << "</div>\n";
                 anyLog = true;
             }
         }
         for (const auto& dRep : m.dllReports) {
             for (const auto& logMsg : dRep.peReport.logMessages) {
-                html << "    <div>[" << tag << "/PE] " << logMsg << "</div>\n";
+                html << "    <div>[" << tag << "/PE] " << EscapeHtml(logMsg) << "</div>\n";
                 anyLog = true;
             }
             if (!dRep.loadReport.errorLog.empty()) {
-                html << "    <div>[" << tag << "/Load] " << dRep.loadReport.errorLog << "</div>\n";
+                html << "    <div>[" << tag << "/Load] " << EscapeHtml(dRep.loadReport.errorLog) << "</div>\n";
                 anyLog = true;
             }
         }
         for (const auto& logMsg : m.packageFiles.scanLog) {
-            html << "    <div>[" << tag << "/Scan] " << logMsg << "</div>\n";
+            html << "    <div>[" << tag << "/Scan] " << EscapeHtml(logMsg) << "</div>\n";
             anyLog = true;
         }
     }
     for (const auto& logMsg : fleetReport.crossModelHeaderConflictReport.logMessages) {
-        html << "    <div>[HeaderConflict] " << logMsg << "</div>\n";
+        html << "    <div>[HeaderConflict] " << EscapeHtml(logMsg) << "</div>\n";
         anyLog = true;
     }
     for (const auto& logMsg : fleetReport.multiModelReport.logMessages) {
-        html << "    <div>[MultiModel] " << logMsg << "</div>\n";
+        html << "    <div>[MultiModel] " << EscapeHtml(logMsg) << "</div>\n";
         anyLog = true;
     }
     for (const auto& logMsg : fleetReport.multiThreadReport.logMessages) {
-        html << "    <div>[MultiThread] " << logMsg << "</div>\n";
+        html << "    <div>[MultiThread] " << EscapeHtml(logMsg) << "</div>\n";
         anyLog = true;
     }
     for (const auto& model : fleetReport.multiObjectReports) {
         for (const auto& logMsg : model.report.logMessages) {
             html << "    <div>[" << model.modelName << "/MultiObject] "
-                 << logMsg << "</div>\n";
+                 << EscapeHtml(logMsg) << "</div>\n";
             anyLog = true;
         }
     }
     if (!fleetReport.perfReport.exceptionLog.empty()) {
-        html << "    <div class=\"fail\">[Perf] " << fleetReport.perfReport.exceptionLog << "</div>\n";
+        html << "    <div class=\"fail\">[Perf] " << EscapeHtml(fleetReport.perfReport.exceptionLog) << "</div>\n";
         anyLog = true;
     }
     if (!anyLog) {

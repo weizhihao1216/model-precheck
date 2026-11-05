@@ -131,7 +131,7 @@ ApplicationWindow {
                 }
             }
             Text {
-                text: "v1.1"
+                text: "v1.0.0"
                 color: window.secondaryInk
                 font.pixelSize: 12
                 Layout.alignment: Qt.AlignVCenter

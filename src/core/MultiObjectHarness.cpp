@@ -81,11 +81,11 @@ void SetDllDirectoryPreferringModels(const std::vector<std::string>& searchDirs)
         QDirIterator it(qPath(dir), QStringList() << QStringLiteral("*.dll"),
                         QDir::Files, QDirIterator::Subdirectories);
         if (it.hasNext()) {
-            SetDllDirectoryA(dir.c_str());
+            SetDllDirectoryW(toWide(dir).c_str());
             return;
         }
     }
-    if (!searchDirs.empty()) SetDllDirectoryA(searchDirs.front().c_str());
+    if (!searchDirs.empty()) SetDllDirectoryW(toWide(searchDirs.front()).c_str());
 }
 
 typedef int (*RunRaw)(const double*, int, const int*, int,
@@ -847,14 +847,14 @@ bool MultiObjectHarness::LoadModelDll(
 
     const std::string directory = qToUtf8(
         QDir::toNativeSeparators(QFileInfo(absolutePath).absolutePath()));
-    SetDllDirectoryA(directory.c_str());
+    SetDllDirectoryW(toWide(directory).c_str());
     const std::string utf8Path = qToUtf8(QDir::toNativeSeparators(absolutePath));
     // 加载私有副本且从不卸载：既保证每次都是全新的模块状态，又不会执行被测模块的 DETACH。
     std::string loadError;
     m_hModule = LoadPrivateModuleCopy(utf8Path, std::string(), nullptr, &loadError);
     if (!m_hModule) {
         error = "无法加载第三方模型 DLL：" + loadError;
-        SetDllDirectoryA(nullptr);
+        SetDllDirectoryW(nullptr);
         return false;
     }
     m_pfnCreate = reinterpret_cast<FnModelCreate>(
@@ -933,7 +933,7 @@ void MultiObjectHarness::Unload() {
     m_pfnDestroyEx = nullptr;
     m_directModelMode = false;
     m_dllPath.clear();
-    SetDllDirectoryA(nullptr);
+    SetDllDirectoryW(nullptr);
 }
 
 void MultiObjectHarness::SetEnabledRandomVars(const std::vector<RandomVarDef>& vars) {

@@ -1,5 +1,6 @@
 #include "PeAnalyzer.h"
 #include "../utils/QtCompat.h"
+#include "../utils/SehHelper.h"
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -8,6 +9,16 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+
+
+static std::string WideToUtf8(const std::wstring& wide) {
+    if (wide.empty()) return std::string();
+    const int n = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (n <= 1) return std::string();
+    std::string utf8(static_cast<size_t>(n - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, &utf8[0], n, nullptr, nullptr);
+    return utf8;
+}
 
 static DWORD RvaToFileOffset(DWORD rva, PIMAGE_SECTION_HEADER pSectionHeader, WORD numberOfSections) {
     for (WORD i = 0; i < numberOfSections; ++i) {
@@ -42,7 +53,11 @@ PeAnalysisReport PeAnalyzer::AnalyzeDll(const std::string& dllPath,
         targetDir = dllPath.substr(0, lastSlash);
     }
 
-    std::ifstream file(dllPath, std::ios::binary | std::ios::ate);
+    const std::wstring wDllPath = Utf8ToWidePath(dllPath);
+    std::ifstream file(wDllPath.c_str(), std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        file.open(dllPath.c_str(), std::ios::binary | std::ios::ate);
+    }
     if (!file.is_open()) {
         report.logMessages.push_back("ERROR: Failed to open DLL file for PE static analysis: " + dllPath);
         return report;
@@ -256,37 +271,43 @@ bool PeAnalyzer::ResolveDllLocation(const std::string& dllName,
                                    const std::string& targetDllDir,
                                    const std::vector<std::string>& extraSearchPaths,
                                    std::string& outPath) {
+    const std::wstring wDllName = Utf8ToWidePath(dllName);
     // 1. Check target DLL directory
-    std::string path1 = targetDllDir + "\\" + dllName;
-    if (GetFileAttributesA(path1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        outPath = path1;
-        return true;
+    if (!targetDllDir.empty()) {
+        std::string path1 = targetDllDir + "\\" + dllName;
+        std::wstring wPath1 = Utf8ToWidePath(path1);
+        if (GetFileAttributesW(wPath1.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            outPath = path1;
+            return true;
+        }
     }
 
     // 2. Check Extra search paths
     for (const auto& dir : extraSearchPaths) {
+        if (dir.empty()) continue;
         std::string pathExtra = dir + "\\" + dllName;
-        if (GetFileAttributesA(pathExtra.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        std::wstring wPathExtra = Utf8ToWidePath(pathExtra);
+        if (GetFileAttributesW(wPathExtra.c_str()) != INVALID_FILE_ATTRIBUTES) {
             outPath = pathExtra;
             return true;
         }
     }
 
     // 3. Check System32 / SysWOW64
-    char sysDir[MAX_PATH];
-    if (GetSystemDirectoryA(sysDir, MAX_PATH) > 0) {
-        std::string pathSys = std::string(sysDir) + "\\" + dllName;
-        if (GetFileAttributesA(pathSys.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            outPath = pathSys;
+    wchar_t sysDir[MAX_PATH];
+    if (GetSystemDirectoryW(sysDir, MAX_PATH) > 0) {
+        std::wstring wPathSys = std::wstring(sysDir) + L"\\" + wDllName;
+        if (GetFileAttributesW(wPathSys.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            outPath = WideToUtf8(wPathSys);
             return true;
         }
     }
 
-    // 4. Use SearchPathA API
-    char searchBuf[MAX_PATH];
-    LPSTR pFilePart;
-    if (SearchPathA(NULL, dllName.c_str(), ".dll", MAX_PATH, searchBuf, &pFilePart) > 0) {
-        outPath = searchBuf;
+    // 4. Use SearchPathW API
+    wchar_t searchBuf[MAX_PATH];
+    LPWSTR pFilePart;
+    if (SearchPathW(NULL, wDllName.c_str(), L".dll", MAX_PATH, searchBuf, &pFilePart) > 0) {
+        outPath = WideToUtf8(searchBuf);
         return true;
     }
 

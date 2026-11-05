@@ -223,8 +223,13 @@ std::string UserCodeHarness::FindVcVars64Bat() {
     size_t b = 0;
     while (b < out.size() && (out[b] == ' ' || out[b] == '\n' || out[b] == '\r')) ++b;
     out = out.substr(b);
-    if (out.empty()) return {};
-    return out + "\\VC\\Auxiliary\\Build\\vcvars64.bat";
+    if (!out.empty()) {
+        std::string candidate = out + "\\VC\\Auxiliary\\Build\\vcvars64.bat";
+        if (GetFileAttributesW(Utf8ToWidePath(candidate).c_str()) != INVALID_FILE_ATTRIBUTES) {
+            return candidate;
+        }
+    }
+    return {};
 }
 
 std::string UserCodeHarness::GenerateSource(const UserHarnessConfig& config, const std::vector<RandomVarDef>& enabled) const {
@@ -652,58 +657,61 @@ static void CopyDependencyDllsBesideHarness(const std::vector<std::string>& sear
             const std::string dir = stack.back();
             stack.pop_back();
             ++visited;
-            WIN32_FIND_DATAA data{};
-            const std::string pattern = dir + "\\*";
-            HANDLE find = FindFirstFileA(pattern.c_str(), &data);
+            WIN32_FIND_DATAW data{};
+            const std::wstring pattern = Utf8ToWide(dir) + L"\\*";
+            HANDLE find = FindFirstFileW(pattern.c_str(), &data);
             if (find == INVALID_HANDLE_VALUE) continue;
             do {
-                if (strcmp(data.cFileName, ".") == 0 || strcmp(data.cFileName, "..") == 0)
+                if (wcscmp(data.cFileName, L".") == 0 || wcscmp(data.cFileName, L"..") == 0)
                     continue;
-                const std::string full = dir + "\\" + data.cFileName;
+                int nName = WideCharToMultiByte(CP_UTF8, 0, data.cFileName, -1, nullptr, 0, nullptr, nullptr);
+                std::string u8Name(nName > 1 ? nName - 1 : 0, '\0');
+                if (nName > 1) WideCharToMultiByte(CP_UTF8, 0, data.cFileName, -1, &u8Name[0], nName, nullptr, nullptr);
+
+                const std::string full = dir + "\\" + u8Name;
                 if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                     if (visited < 64) stack.push_back(full);
                     continue;
                 }
-                const char* ext = strrchr(data.cFileName, '.');
-                if (!ext || _stricmp(ext, ".dll") != 0) continue;
-                if (strstr(data.cFileName, "__run") != nullptr) continue;
-                if (!harnessName.empty() && _stricmp(data.cFileName, harnessName.c_str()) == 0) {
+                const wchar_t* ext = wcsrchr(data.cFileName, L'.');
+                if (!ext || _wcsicmp(ext, L".dll") != 0) continue;
+                if (wcsstr(data.cFileName, L"__run") != nullptr) continue;
+                if (!harnessName.empty() && _stricmp(u8Name.c_str(), harnessName.c_str()) == 0) {
                     log += "INFO: 跳过与 Harness 同名的模型 DLL（避免覆盖）: ";
-                    log += data.cFileName;
+                    log += u8Name;
                     log += "\n";
                     continue;
                 }
-                if (!copiedNames.insert(data.cFileName).second) continue;
-                const std::string dest = destDir + "\\" + data.cFileName;
+                if (!copiedNames.insert(u8Name).second) continue;
+                const std::string dest = destDir + "\\" + u8Name;
                 if (!harnessDllPath.empty()
                     && _stricmp(dest.c_str(), harnessDllPath.c_str()) == 0) {
                     continue;
                 }
-                if (CopyFileA(full.c_str(), dest.c_str(), FALSE)) {
+                if (CopyFileW(Utf8ToWide(full).c_str(), Utf8ToWide(dest).c_str(), FALSE)) {
                     log += "INFO: 已复制依赖 DLL 到 Harness 目录: ";
-                    log += data.cFileName;
+                    log += u8Name;
                     log += "\n";
                 }
-            } while (FindNextFileA(find, &data));
+            } while (FindNextFileW(find, &data));
             FindClose(find);
         }
     }
 }
-
 void UserCodeHarness::ApplyDllSearchPaths() const {
     // Prefer a directory that actually contains .dll (models/), not only .lib.
     for (const auto& dir : m_dllSearchDirs) {
-        WIN32_FIND_DATAA data{};
-        const std::string pattern = dir + "\\*.dll";
-        HANDLE find = FindFirstFileA(pattern.c_str(), &data);
+        WIN32_FIND_DATAW data{};
+        const std::wstring pattern = Utf8ToWide(dir) + L"\\*.dll";
+        HANDLE find = FindFirstFileW(pattern.c_str(), &data);
         if (find != INVALID_HANDLE_VALUE) {
             FindClose(find);
-            SetDllDirectoryA(dir.c_str());
+            SetDllDirectoryW(Utf8ToWide(dir).c_str());
             return;
         }
     }
     if (!m_dllSearchDirs.empty()) {
-        SetDllDirectoryA(m_dllSearchDirs.front().c_str());
+        SetDllDirectoryW(Utf8ToWide(m_dllSearchDirs.front()).c_str());
     }
 }
 
@@ -923,6 +931,7 @@ CompileResult UserCodeHarness::Compile(const UserHarnessConfig& config) {
         GetTempPathA(MAX_PATH, tmp);
         work = std::string(tmp) + "ModelPrecheck_Harness";
     }
+    work = qToUtf8(QDir::toNativeSeparators(QFileInfo(qUtf8(work)).absoluteFilePath()));
     if (!EnsureDirTreeUtf8(work)) {
         result.log = "ERROR: 无法创建输出目录: " + work + " (GetLastError=" + std::to_string(GetLastError()) + ")\n";
         // still try if already exists
@@ -939,7 +948,20 @@ CompileResult UserCodeHarness::Compile(const UserHarnessConfig& config) {
     std::string dllPath = work + "\\" + base + ".dll";
     result.sourcePath = srcPath;
 
-    std::string src = GenerateSource(config, m_enabledVars);
+    UserHarnessConfig cfg = config;
+    cfg.workDir = work;
+    auto makeAbsolute = [](std::vector<std::string>& paths) {
+        for (auto& path : paths) {
+            path = qToUtf8(QDir::toNativeSeparators(
+                QFileInfo(qUtf8(path)).absoluteFilePath()));
+        }
+    };
+    makeAbsolute(cfg.headerPaths);
+    makeAbsolute(cfg.includeDirs);
+    makeAbsolute(cfg.libPaths);
+    makeAbsolute(cfg.linkLibs);
+
+    std::string src = GenerateSource(cfg, m_enabledVars);
     {
         std::string werr;
         if (!WriteTextFileUtf8Path(srcPath, src, werr)) {
@@ -952,8 +974,6 @@ CompileResult UserCodeHarness::Compile(const UserHarnessConfig& config) {
         std::wstring wDll = Utf8ToWide(dllPath);
         if (!wDll.empty()) DeleteFileW(wDll.c_str());
     }
-    UserHarnessConfig cfg = config;
-    cfg.workDir = work;
     if (!InvokeCl(cfg, srcPath, dllPath, result.log)) {
         return result;
     }
@@ -1004,7 +1024,7 @@ void UserCodeHarness::Unload() {
     m_pfnGetTrajCount = nullptr;
     m_pfnGetTrajPoint = nullptr;
     m_dllPath.clear();
-    SetDllDirectoryA(nullptr);
+    SetDllDirectoryW(nullptr);
 }
 
 void UserCodeHarness::SetEnabledRandomVars(const std::vector<RandomVarDef>& vars) {

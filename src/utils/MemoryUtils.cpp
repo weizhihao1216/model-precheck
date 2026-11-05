@@ -9,7 +9,8 @@
 
 ProcessMemoryStats MemoryUtils::GetCurrentProcessMemory() {
     ProcessMemoryStats stats = { 0, 0, 0 };
-    PROCESS_MEMORY_COUNTERS_EX pmc;
+    PROCESS_MEMORY_COUNTERS_EX pmc{};
+    pmc.cb = sizeof(pmc);
     if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
         stats.workingSetBytes = pmc.WorkingSetSize;
         stats.privateUsageBytes = pmc.PrivateUsage;

@@ -158,10 +158,12 @@ DualBuildPrecheckReport inspectModel(const SessionModelSnapshot& model, int inde
 }
 
 void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snapshot,
-                         const QmlPrecheckRunner::ProgressCallback& progress) {
+                         const QmlPrecheckRunner::ProgressCallback& progress,
+                         const QmlPrecheckRunner::AbortCallback& isAborted) {
     std::vector<std::unique_ptr<UserCodeHarness>> harnesses;
     std::vector<int> indexes;
     for (int i = 0; i < static_cast<int>(snapshot.models.size()); ++i) {
+        if (isAborted && isAborted()) return;
         const SessionModelSnapshot& model = snapshot.models[static_cast<size_t>(i)];
         if (model.lastUserHarnessDll.isEmpty() || !QFileInfo::exists(model.lastUserHarnessDll))
             continue;
@@ -178,6 +180,7 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
     double weightedTime = 0.0;
     const int runs = qBound(1, snapshot.perfSteps, 100);
     for (int h = 0; h < static_cast<int>(harnesses.size()); ++h) {
+        if (isAborted && isAborted()) return;
         const int modelIndex = indexes[static_cast<size_t>(h)];
         if (progress) progress(QString::fromUtf8("性能与轨迹：%1")
             .arg(displayName(snapshot.models[static_cast<size_t>(modelIndex)], modelIndex)));
@@ -247,7 +250,7 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
             .arg(trajectory.overallPass ? QStringLiteral("PASS") : QStringLiteral("FAIL")));
     }
 
-    if (harnesses.empty()) return;
+    if (harnesses.empty() || (isAborted && isAborted())) return;
     if (progress) progress(QString::fromUtf8("多线程与多型号并行检查"));
     ConcurrencyTestConfig multi;
     multi.mode = ConcurrencyTestMode::MultiModel;
@@ -302,7 +305,8 @@ void applyRuntimeReports(FleetSessionReport& fleet, const SessionSnapshot& snaps
 }
 
 void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& snapshot,
-                             const QmlPrecheckRunner::ProgressCallback& progress) {
+                             const QmlPrecheckRunner::ProgressCallback& progress,
+                             const QmlPrecheckRunner::AbortCallback& isAborted) {
     std::vector<std::unique_ptr<MultiObjectHarness>> loaded;
     std::vector<int> loadedIndexes;
     for (int i = 0; i < static_cast<int>(snapshot.models.size()); ++i) {
@@ -319,7 +323,7 @@ void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& s
         if (named.harnessCompiled) {
             harness->SetEnabledRandomVars(model.randomVars);
             MultiObjectTestConfig config;
-            config.objectCount = qMax(1, model.multiObjectCount);
+            config.objectCount = qMax(2, model.multiObjectCount);
             config.stepCount = qMax(1, model.multiObjectSteps);
             config.stepDt = model.multiObjectDt;
             config.tolerance = model.multiObjectTolerance;
@@ -342,7 +346,7 @@ void applyMultiObjectReports(FleetSessionReport& fleet, const SessionSnapshot& s
                  ? (stored.configured ? QString::fromUtf8("未执行") : QString::fromUtf8("未配置"))
                  : qstr(stored.report.verdict)));
     }
-    if (loaded.size() < 2) return;
+    if (loaded.size() < 2 || (isAborted && isAborted())) return;
     if (progress) progress(QString::fromUtf8("跨型号对象交错检查"));
     FleetMultiObjectTestConfig config;
     config.randomSeed = 20260903u;
@@ -664,7 +668,8 @@ void buildPayload(const FleetSessionReport& fleet, QmlPrecheckResult& output) {
 } // namespace
 
 QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
-                                         const ProgressCallback& progress) {
+                                         const ProgressCallback& progress,
+                                         const AbortCallback& isAborted) {
     QmlPrecheckResult output;
     if (snapshot.models.empty()) {
         output.error = QString::fromUtf8("请先添加至少一个型号。");
@@ -674,6 +679,10 @@ QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
     fleet.timestamp = u8(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
     int passedModels = 0;
     for (int i = 0; i < static_cast<int>(snapshot.models.size()); ++i) {
+        if (isAborted && isAborted()) {
+            output.error = QString::fromUtf8("预检已取消。");
+            return output;
+        }
         const SessionModelSnapshot& model = snapshot.models[static_cast<size_t>(i)];
         if (progress) progress(QString::fromUtf8("静态检查：%1（%2/%3）")
             .arg(displayName(model, i))
@@ -691,8 +700,20 @@ QmlPrecheckResult QmlPrecheckRunner::Run(const SessionSnapshot& snapshot,
         allHeaders.insert(allHeaders.end(), model.packageFiles.allHeaderFiles.begin(),
                           model.packageFiles.allHeaderFiles.end());
     fleet.crossModelHeaderConflictReport = HeaderAnalyzer::AnalyzeHeaderSet(allHeaders);
-    applyRuntimeReports(fleet, snapshot, progress);
-    applyMultiObjectReports(fleet, snapshot, progress);
+    if (isAborted && isAborted()) {
+        output.error = QString::fromUtf8("预检已取消。");
+        return output;
+    }
+    applyRuntimeReports(fleet, snapshot, progress, isAborted);
+    if (isAborted && isAborted()) {
+        output.error = QString::fromUtf8("预检已取消");
+        return output;
+    }
+    applyMultiObjectReports(fleet, snapshot, progress, isAborted);
+    if (isAborted && isAborted()) {
+        output.error = QString::fromUtf8("预检已取消");
+        return output;
+    }
 
     fleet.overallPass = passedModels == static_cast<int>(snapshot.models.size());
     if (fleet.perfReport.realtimeVerdict == "FAIL"

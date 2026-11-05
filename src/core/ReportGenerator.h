@@ -98,6 +98,22 @@ public:
     static bool SaveReportToPdf(const CombinedPrecheckReport& report, const std::string& outputPath);
     static bool SaveDualReportToPdf(const DualBuildPrecheckReport& dualReport, const std::string& outputPath);
     static bool SaveFleetReportToPdf(const FleetSessionReport& fleetReport, const std::string& outputPath);
+    static inline std::string EscapeHtml(const std::string& input) {
+        if (input.empty()) return {};
+        std::string out;
+        out.reserve(input.size() + 16);
+        for (char c : input) {
+            switch (c) {
+            case '&': out += "&amp;"; break;
+            case '<': out += "&lt;"; break;
+            case '>': out += "&gt;"; break;
+            case '"': out += "&quot;"; break;
+            case '\'': out += "&#39;"; break;
+            default: out += c; break;
+            }
+        }
+        return out;
+    }
 };
 
 #endif // REPORT_GENERATOR_H

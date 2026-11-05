@@ -1,8 +1,10 @@
 #include "LibAnalyzer.h"
+#include "../utils/SehHelper.h"
 #include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <cstring>
+#include <cstdlib>
+#include <cctype>
 
 #ifndef IMAGE_FILE_MACHINE_AMD64
 #define IMAGE_FILE_MACHINE_AMD64 0x8664
@@ -12,7 +14,7 @@
 #endif
 
 LibAnalysisReport LibAnalyzer::AnalyzeLib(const std::string& libPath,
-                                           const std::vector<std::string>& requiredExports) {
+                                         const std::vector<std::string>& requiredExports) {
     LibAnalysisReport report;
     report.filePath = libPath;
     report.architecture = "Unknown";
@@ -21,15 +23,28 @@ LibAnalysisReport LibAnalyzer::AnalyzeLib(const std::string& libPath,
     report.isArchMatch = false;
     report.overallPass = false;
 
-    std::ifstream file(libPath, std::ios::binary);
+    const std::wstring wLibPath = Utf8ToWidePath(libPath);
+    std::ifstream file(wLibPath.c_str(), std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        file.open(libPath.c_str(), std::ios::binary | std::ios::ate);
+    }
     if (!file.is_open()) {
         report.logMessages.push_back("FAIL: 无法打开 LIB 文件: " + libPath);
         return report;
     }
 
-    std::stringstream ss;
-    ss << file.rdbuf();
-    std::string content = ss.str();
+    const std::streamsize sizeSigned = file.tellg();
+    file.seekg(0, std::ios::beg);
+    if (sizeSigned < 8) {
+        report.logMessages.push_back("FAIL: LIB 文件大小无效 (< 8 字节)");
+        return report;
+    }
+    const size_t contentSize = static_cast<size_t>(sizeSigned);
+    std::string content(contentSize, '\0');
+    if (!file.read(&content[0], sizeSigned)) {
+        report.logMessages.push_back("FAIL: 读取 LIB 文件内容失败: " + libPath);
+        return report;
+    }
     file.close();
 
     // 1. Verify COFF Archive Header "!<arch>\n"
@@ -41,31 +56,71 @@ LibAnalysisReport LibAnalyzer::AnalyzeLib(const std::string& libPath,
 
     report.logMessages.push_back("PASS: 格式符合标准 COFF .lib 归档规范");
 
-    // 2. Machine Architecture & Import/Static Lib Detection
+    // 2. Machine Architecture & Import/Static Lib Detection via COFF Archive Members
     bool foundX64 = false;
     bool foundX86 = false;
     bool isImportLib = false;
 
-    // Scan for Import Header Sig2 (0xFFFF)
-    for (size_t i = 8; i + 20 < content.size(); i++) {
-        uint16_t sig1 = *reinterpret_cast<const uint16_t*>(content.data() + i);
-        uint16_t sig2 = *reinterpret_cast<const uint16_t*>(content.data() + i + 2);
-        if (sig1 == 0x0000 && sig2 == 0xFFFF) {
-            isImportLib = true;
-            uint16_t machine = *reinterpret_cast<const uint16_t*>(content.data() + i + 6);
-            if (machine == IMAGE_FILE_MACHINE_AMD64) foundX64 = true;
-            else if (machine == IMAGE_FILE_MACHINE_I386) foundX86 = true;
+    // Scan COFF archive members by standard 60-byte member headers
+    size_t offset = 8;
+    constexpr size_t kMemberHeaderSize = 60;
+    int inspectedMembers = 0;
+
+    while (offset + kMemberHeaderSize <= content.size() && inspectedMembers < 64) {
+        const char* pMemberHdr = content.data() + offset;
+        // Verify end of header signature "`\n"
+        if (pMemberHdr[58] != '`' || pMemberHdr[59] != '\n') {
+            break;
         }
+
+        char sizeBuf[11] = {0};
+        std::memcpy(sizeBuf, pMemberHdr + 48, 10);
+        size_t memberSize = static_cast<size_t>(std::strtoul(sizeBuf, nullptr, 10));
+
+        const size_t dataOffset = offset + kMemberHeaderSize;
+        if (dataOffset > content.size() || memberSize > content.size() - dataOffset) {
+            break;
+        }
+
+        const char* nameField = pMemberHdr;
+        bool isLinkerMember = (nameField[0] == '/' && (nameField[1] == ' ' || nameField[1] == '/' || std::isdigit(static_cast<unsigned char>(nameField[1]))));
+
+        if (!isLinkerMember && memberSize >= 4) {
+            inspectedMembers++;
+            const uint8_t* pData = reinterpret_cast<const uint8_t*>(content.data() + dataOffset);
+            // Check for Short Import Header (Sig1 == 0x0000, Sig2 == 0xFFFF)
+            uint16_t sig1 = *reinterpret_cast<const uint16_t*>(pData);
+            uint16_t sig2 = *reinterpret_cast<const uint16_t*>(pData + 2);
+            if (sig1 == 0x0000 && sig2 == 0xFFFF && memberSize >= 20) {
+                isImportLib = true;
+                uint16_t machine = *reinterpret_cast<const uint16_t*>(pData + 6);
+                if (machine == IMAGE_FILE_MACHINE_AMD64) foundX64 = true;
+                else if (machine == IMAGE_FILE_MACHINE_I386) foundX86 = true;
+            } else if (memberSize >= 20) {
+                // Standard COFF Object Header: Machine is at offset 0
+                uint16_t machine = *reinterpret_cast<const uint16_t*>(pData);
+                if (machine == IMAGE_FILE_MACHINE_AMD64) foundX64 = true;
+                else if (machine == IMAGE_FILE_MACHINE_I386) foundX86 = true;
+            }
+            if (foundX64 || foundX86) {
+                break;
+            }
+        }
+
+        // Members are 2-byte aligned in COFF archive
+        offset = dataOffset + memberSize + (memberSize % 2);
     }
 
-    // Fallback: search for machine type codes in COFF Headers if not import lib
+    // Fallback: If archive member loop did not detect machine, scan for short import header signatures
     if (!foundX64 && !foundX86) {
-        for (size_t i = 8; i + 2 < content.size(); i++) {
-            uint16_t val = *reinterpret_cast<const uint16_t*>(content.data() + i);
-            if (val == IMAGE_FILE_MACHINE_AMD64) {
-                foundX64 = true;
-            } else if (val == IMAGE_FILE_MACHINE_I386) {
-                foundX86 = true;
+        for (size_t i = 8; i + 20 < content.size(); i += 2) {
+            uint16_t s1 = *reinterpret_cast<const uint16_t*>(content.data() + i);
+            uint16_t s2 = *reinterpret_cast<const uint16_t*>(content.data() + i + 2);
+            if (s1 == 0x0000 && s2 == 0xFFFF) {
+                isImportLib = true;
+                uint16_t m = *reinterpret_cast<const uint16_t*>(content.data() + i + 6);
+                if (m == IMAGE_FILE_MACHINE_AMD64) { foundX64 = true; break; }
+                else if (m == IMAGE_FILE_MACHINE_I386) { foundX86 = true; break; }
             }
         }
     }

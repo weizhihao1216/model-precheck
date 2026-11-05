@@ -90,11 +90,11 @@ int main(int argc, char* argv[]) {
 
     qRegisterMetaType<PerfProfileReport>("PerfProfileReport");
     qRegisterMetaType<PerfSample>("PerfSample");
-    // 涓撻」娴嬭瘯閫氳繃璺ㄧ嚎绋嬩俊鍙峰洖浼犵粨鏋滐紝鏄惧紡娉ㄥ唽閬垮厤闃熷垪杩炴帴鏃犳硶鎶曢€掑鑷翠竴鐩寸瓑寰呫€?
+    // 专项测试通过跨线程信号回传结果，显式注册避免队列连接无法投递导致一直等待。
     qRegisterMetaType<ConcurrencyTestReport>("ConcurrencyTestReport");
     qRegisterMetaType<ConcurrencyThreadResult>("ConcurrencyThreadResult");
 
-    // 娓呯悊涓婃杩愯閬楃暀鐨勮娴嬫ā鍧楀壇鏈紙鏈杩愯灏氭湭鍔犺浇浠讳綍妯″潡锛屽垹闄や竴瀹氬畨鍏級銆?
+    // 清理上次运行遗留的被测模块副本（本次运行尚未加载任何模块，删除一定安全）。
     const QString appDirPath = QCoreApplication::applicationDirPath();
     CleanupPrivateModuleCopies(QDir(appDirPath).filePath(QStringLiteral("TestModel")).toUtf8().toStdString());
     CleanupPrivateModuleCopies(QDir(appDirPath).filePath(QStringLiteral("sample_models")).toUtf8().toStdString());
@@ -110,9 +110,9 @@ int main(int argc, char* argv[]) {
         if (engine.rootObjects().isEmpty())
             return -1;
         exitCode = app.exec();
-    }   // 杩欓噷瀹屾垚 Qt 渚х殑姝ｅ父鏋愭瀯锛堜細璇濅繚瀛樸€佺紪璇戣繘绋嬪洖鏀剁瓑锛?
-    // 琚祴妯″潡鐨勭鏈夊壇鏈缁堢暀鍦ㄨ繘绋嬪唴锛屽叾 DETACH 鍙兘鍦ㄩ€€鍑烘椂姝诲惊鐜紱
-    // 鍙鍔犺浇杩囧壇鏈氨鐩存帴缁堟杩涚▼锛岄伩鍏嶅嚭鐜板叧涓嶆帀鐨勫亣姝昏繘绋嬨€?
+    }   // 这里完成 Qt 侧的正常析构（会话保存、编译进程回收等）
+    // 被测模块的私有副本始终留在进程内，其 DETACH 可能在退出时死循环；
+    // 只要加载过副本就直接终止进程，避免出现关不掉的假死进程。
     if (HasLoadedPrivateModule())
         TerminateProcess(GetCurrentProcess(), static_cast<UINT>(exitCode));
     return exitCode;

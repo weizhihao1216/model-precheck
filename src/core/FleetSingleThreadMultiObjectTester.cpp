@@ -162,6 +162,13 @@ FleetMultiObjectTestReport FleetSingleThreadMultiObjectTester::Run(
             report.verdict = "FAIL";
             report.summary = "型号「" + spec.modelName + "」交错会话准备失败: " + error;
             report.logMessages.push_back("FAIL: " + report.summary);
+            for (Slot& s : slots) {
+                if (s.live) {
+                    unsigned long sseh = 0;
+                    s.harness->DestroyLiveObject(s.live, s.localObjectId, &sseh);
+                    s.live = nullptr;
+                }
+            }
             return report;
         }
         for (Slot& slot : slots) {

@@ -8,6 +8,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <memory>
+#include <atomic>
 #include <vector>
 
 #include "core/SessionStore.h"
@@ -179,6 +180,7 @@ public:
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void runPrecheck();
+    Q_INVOKABLE void cancelPrecheck();
     Q_INVOKABLE void openReport();
     Q_INVOKABLE void exportReport();
     Q_INVOKABLE void selectModel(int modelIndex);
@@ -323,6 +325,7 @@ private:
     QVariantMap m_specialtyStaticReport;
     QThread* m_specialtyThread = nullptr;
     QThread* m_precheckThread = nullptr;
+    std::shared_ptr<std::atomic<bool>> m_precheckCancelFlag;
     std::unique_ptr<UserCodeHarness> m_specialtyHarness;
     std::vector<std::unique_ptr<UserCodeHarness>> m_specialtyFleetHarnesses;
     SessionSnapshot m_restoreSnapshot;

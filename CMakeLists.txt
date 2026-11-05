@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(model-precheck VERSION 1.0 LANGUAGES C CXX)
+project(model-precheck VERSION 1.0.0 LANGUAGES C CXX)
 
 add_compile_definitions(NOMINMAX)
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS)

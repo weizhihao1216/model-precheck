@@ -28,14 +28,10 @@ This file provides system context, tech stack rules, and component locations for
 # One-click build script (defaults to best available Qt)
 .\build.bat
 
-# One-click dual-version separate packaging (Qt 5.11 & Qt 5.14)
+# One-click packaging (model-precheck_v1.0.0_windows.zip)
 .\package.bat
 
-# Or package a single version
-.\package.bat 5.11
-.\package.bat 5.14
-
 # Or manual CMake commands
-cmake -B build -A x64 -DCMAKE_INSTALL_PREFIX=dist
-cmake --build build --config Release --target install
+cmake -B build_pkg -A x64 -DCMAKE_INSTALL_PREFIX=dist\model-precheck_v1.0.0_windows
+cmake --build build_pkg --config Release --target install
 ```
